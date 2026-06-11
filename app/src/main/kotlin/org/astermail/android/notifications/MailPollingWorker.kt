@@ -171,17 +171,17 @@ class MailPollingWorker(
         val newest = page?.items?.firstOrNull { !it.is_read }
             ?: page?.items?.firstOrNull()
         val sender = (newest?.sender_name?.takeIf { it.isNotBlank() } ?: newest?.sender_email)?.trim()
-        val subject = newest?.subject?.takeIf { it.isNotBlank() }
-        if (sender.isNullOrBlank() || subject.isNullOrBlank()) {
+        if (sender.isNullOrBlank()) {
             show_generic(context, arrived)
             return
         }
-        val message_id = newest.id.hashCode() and 0x7fffffff
+        val subject = newest?.subject?.trim().orEmpty()
+        val message_id = newest?.id?.hashCode()?.and(0x7fffffff) ?: NOTIFICATION_ID
         show_message(
             context = context,
             sender = sender,
             subject = subject,
-            preview = newest.preview,
+            preview = newest?.preview.orEmpty(),
             message_id = message_id,
         )
     }
@@ -375,6 +375,7 @@ class MailPollingWorker(
                     .setVisibility(NotificationCompat.VISIBILITY_SECRET)
             } else {
                 val one_line_subject = subject.replace(Regex("\\s+"), " ").trim()
+                    .ifBlank { context.getString(R.string.notif_new_message) }
                 val one_line_preview = preview.replace(Regex("\\s+"), " ").trim()
                 builder
                     .setContentTitle(sender)
