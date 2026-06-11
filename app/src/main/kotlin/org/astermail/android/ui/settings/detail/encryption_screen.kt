@@ -1,0 +1,880 @@
+//
+// Aster Communications Inc.
+//
+// Copyright (c) 2026 Aster Communications Inc.
+//
+// This file is part of this project.
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <https://www.gnu.org/licenses/>.
+//
+
+package org.astermail.android.ui.settings.detail
+
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.util.Base64
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.astermail.android.R
+import org.astermail.android.api.preferences.UserPreferences
+import org.astermail.android.auth.AuthRepository
+import org.astermail.android.crypto.CryptoNative
+import org.astermail.android.design.AsterMaterial
+import org.astermail.android.design.AsterSpacing
+import org.astermail.android.design.SquircleShape
+import org.astermail.android.design.components.AsterButton
+import org.astermail.android.design.components.AsterCard
+import org.astermail.android.design.components.AsterDivider
+import org.astermail.android.design.components.AsterGhostButton
+import org.astermail.android.design.components.AsterSecondaryButton
+import org.astermail.android.settings.SettingsViewModel
+import org.astermail.android.storage.SessionKeyStore
+import java.security.MessageDigest
+
+@EntryPoint
+@InstallIn(SingletonComponent::class)
+private interface EncryptionScreenDeps {
+    fun session_key_store(): SessionKeyStore
+    fun auth_repository(): AuthRepository
+}
+
+private data class identity_key_view(
+    val email: String?,
+    val public_b64: String?,
+    val fingerprint: String?,
+    val is_pgp: Boolean,
+    val available: Boolean,
+)
+
+@Composable
+fun EncryptionScreen(
+    on_back: () -> Unit,
+    on_open: (id: String) -> Unit = {},
+) {
+    val colors = AsterMaterial.colors
+    val context = LocalContext.current
+    val vm: SettingsViewModel = hiltViewModel()
+    val state by vm.state.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+
+    val deps = remember(context) {
+        EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            EncryptionScreenDeps::class.java,
+        )
+    }
+    val session_key_store = remember(deps) { deps.session_key_store() }
+    val auth_repository = remember(deps) { deps.auth_repository() }
+
+    LaunchedEffect(Unit) {
+        vm.load_pgp_key_info()
+        vm.load_recovery_codes_status()
+        vm.load_encryption_settings()
+        vm.load_wkd_keyserver_status()
+    }
+
+    val view_state = produceState<identity_key_view?>(initialValue = null, deps) {
+        value = withContext(Dispatchers.IO) {
+            if (session_key_store.get_identity_key() == null) {
+                auth_repository.try_recover_identity_key()
+            }
+            val stored = session_key_store.get_identity_key()
+            val email_addr = session_key_store.get_user_email()
+            if (stored.isNullOrBlank()) {
+                identity_key_view(
+                    email = email_addr,
+                    public_b64 = null,
+                    fingerprint = null,
+                    is_pgp = false,
+                    available = false,
+                )
+            } else if (stored.contains("BEGIN PGP")) {
+                val fp = runCatching {
+                    val digest = MessageDigest.getInstance("SHA-256")
+                        .digest(stored.toByteArray(Charsets.UTF_8))
+                    val hex_bytes = digest.map { String.format(java.util.Locale.US, "%02X", it.toInt() and 0xFF) }
+                    hex_bytes.chunked(4).joinToString("\n") { it.joinToString(" ") }
+                }.getOrNull()
+                identity_key_view(
+                    email = email_addr,
+                    public_b64 = null,
+                    fingerprint = fp,
+                    is_pgp = true,
+                    available = true,
+                )
+            } else {
+                val pub_b64 = runCatching {
+                    val private_bytes = Base64.decode(stored, Base64.DEFAULT)
+                    val public_bytes = CryptoNative.derive_identity_public_key(private_bytes)
+                    private_bytes.fill(0)
+                    Base64.encodeToString(public_bytes, Base64.NO_WRAP)
+                }.getOrNull()
+                val fp = pub_b64?.let {
+                    runCatching {
+                        CryptoNative.fingerprint_hex(Base64.decode(it, Base64.NO_WRAP))
+                    }.getOrNull()
+                }
+                identity_key_view(
+                    email = email_addr,
+                    public_b64 = pub_b64,
+                    fingerprint = fp,
+                    is_pgp = false,
+                    available = pub_b64 != null,
+                )
+            }
+        }
+    }
+
+    val view = view_state.value
+    val identity_public_b64 = view?.public_b64
+    val fingerprint = view?.fingerprint
+    val key_available = view?.available == true
+    val is_pgp_key = view?.is_pgp == true
+    val prefs = state.preferences
+
+    var show_full_key by remember { mutableStateOf(false) }
+    var show_regen_confirm by remember { mutableStateOf(false) }
+    var show_new_codes_dialog by remember { mutableStateOf(false) }
+    var new_recovery_codes by remember { mutableStateOf(emptyList<String>()) }
+    var regenerating by remember { mutableStateOf(false) }
+    var show_export_private_dialog by remember { mutableStateOf(false) }
+    var export_private_password by remember { mutableStateOf("") }
+    var exporting_private_key by remember { mutableStateOf(false) }
+    var export_private_error by remember { mutableStateOf<String?>(null) }
+
+    fun toggle(update: (UserPreferences) -> UserPreferences) {
+        val current = prefs ?: UserPreferences()
+        vm.save_preferences(update(current))
+    }
+
+    detail_scaffold(title = stringResource(R.string.encryption_title), on_back = on_back) {
+
+        section_label(stringResource(R.string.your_key))
+
+        if (view == null) {
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        CircularProgressIndicator(
+                            color = colors.accent_blue,
+                            modifier = Modifier.size(16.dp),
+                            strokeWidth = 2.dp,
+                        )
+                        Spacer(Modifier.width(AsterSpacing.sm))
+                        Text(
+                            text = stringResource(R.string.loading_identity_key),
+                            color = colors.text_tertiary,
+                            fontSize = 13.sp,
+                        )
+                    }
+                }
+            }
+        } else if (key_available && fingerprint != null) {
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+                    val pgp_info = state.pgp_key_info
+                    if (pgp_info != null && pgp_info.algorithm.isNotBlank()) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column {
+                                Text(
+                                    text = run {
+                                val base = pgp_info.algorithm.replace(Regex("[0-9]+"), "").uppercase().ifBlank { pgp_info.algorithm.uppercase() }
+                                val size = if (pgp_info.key_size > 0) pgp_info.key_size else pgp_info.algorithm.filter { it.isDigit() }.toIntOrNull() ?: 0
+                                if (size > 0) "$base-$size" else base
+                            },
+                                    color = colors.text_primary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                if (pgp_info.created_at.isNotBlank()) {
+                                    Text(
+                                        text = stringResource(R.string.created_at_format, pgp_info.created_at.take(10)),
+                                        color = colors.text_tertiary,
+                                        fontSize = 12.sp,
+                                    )
+                                }
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(SquircleShape(6.dp))
+                                    .background(colors.success.copy(alpha = 0.15f))
+                                    .padding(horizontal = 8.dp, vertical = 3.dp),
+                            ) {
+                                Text(
+                                    text = stringResource(R.string.active),
+                                    color = colors.success,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.size(AsterSpacing.md))
+                        AsterDivider()
+                        Spacer(Modifier.size(AsterSpacing.md))
+                    }
+                    Text(
+                        text = stringResource(if (is_pgp_key) R.string.pgp_identity_fingerprint else R.string.identity_key_fingerprint),
+                        color = colors.text_tertiary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.size(AsterSpacing.xs))
+                    Text(
+                        text = fingerprint,
+                        color = colors.text_primary,
+                        fontSize = 13.sp,
+                        fontFamily = FontFamily.Monospace,
+                    )
+                    Spacer(Modifier.size(AsterSpacing.sm))
+                    Text(
+                        text = stringResource(R.string.fingerprint_description),
+                        color = colors.text_tertiary,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+            v_gap(AsterSpacing.md)
+            AsterButton(
+                label = stringResource(R.string.copy_fingerprint),
+                onClick = {
+                    copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_fingerprint), fingerprint)
+                    Toast.makeText(context, context.getString(R.string.fingerprint_copied), Toast.LENGTH_SHORT).show()
+                },
+            )
+            v_gap(AsterSpacing.sm)
+            AsterSecondaryButton(
+                label = stringResource(R.string.export_public_key),
+                onClick = {
+                    scope.launch {
+                        val armored = vm.export_public_key_now()
+                        if (armored != null) {
+                            copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_public_key), armored)
+                            Toast.makeText(context, context.getString(R.string.public_key_copied), Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                },
+            )
+            v_gap(AsterSpacing.sm)
+            AsterSecondaryButton(
+                label = stringResource(R.string.export_private_key_dialog_title),
+                onClick = {
+                    export_private_password = ""
+                    export_private_error = null
+                    show_export_private_dialog = true
+                },
+            )
+            if (identity_public_b64 != null) {
+                v_gap(AsterSpacing.sm)
+                AsterSecondaryButton(
+                    label = if (show_full_key) stringResource(R.string.hide_public_key) else stringResource(R.string.show_public_key),
+                    onClick = { show_full_key = !show_full_key },
+                )
+            }
+            if (show_full_key && identity_public_b64 != null) {
+                v_gap(AsterSpacing.md)
+                AsterCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+                        Text(
+                            text = identity_public_b64,
+                            color = colors.text_primary,
+                            fontSize = 12.sp,
+                            fontFamily = FontFamily.Monospace,
+                        )
+                        Spacer(Modifier.size(AsterSpacing.sm))
+                        AsterGhostButton(
+                            label = stringResource(R.string.copy_public_key),
+                            onClick = {
+                                copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_public_key), identity_public_b64)
+                            },
+                        )
+                    }
+                }
+            }
+        } else {
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+                    Text(
+                        text = stringResource(R.string.identity_key_unavailable),
+                        color = colors.text_tertiary,
+                        fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.size(AsterSpacing.xs))
+                    Text(
+                        text = stringResource(R.string.identity_key_unavailable_hint),
+                        color = colors.text_tertiary,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+
+        v_gap(AsterSpacing.lg)
+        section_label(stringResource(R.string.recovery_codes))
+        AsterCard(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+                val status = state.recovery_codes_status
+                if (status != null) {
+                    val available = status.available_codes
+                    val total = status.total_codes
+                    val fraction = if (total > 0) available.toFloat() / total else 0f
+                    val is_low = available <= 2
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.recovery_codes_remaining, available, total),
+                            color = colors.text_primary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .clip(SquircleShape(6.dp))
+                                .background((if (is_low) colors.danger else colors.success).copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                text = if (is_low) stringResource(R.string.low) else stringResource(R.string.ok),
+                                color = if (is_low) colors.danger else colors.success,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+                    Spacer(Modifier.size(AsterSpacing.sm))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(6.dp)
+                            .clip(CircleShape)
+                            .background(colors.border_primary),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(fraction = fraction.coerceIn(0f, 1f))
+                                .height(6.dp)
+                                .clip(CircleShape)
+                                .background(if (is_low) colors.danger else colors.success),
+                        )
+                    }
+                    if (is_low) {
+                        Spacer(Modifier.size(AsterSpacing.sm))
+                        Text(
+                            text = stringResource(R.string.recovery_codes_low_warning),
+                            color = colors.danger,
+                            fontSize = 12.sp,
+                        )
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.loading_recovery_codes_status),
+                        color = colors.text_tertiary,
+                        fontSize = 13.sp,
+                    )
+                }
+            }
+        }
+        v_gap(AsterSpacing.sm)
+        AsterSecondaryButton(
+            label = stringResource(R.string.view_backup_recovery_key),
+            onClick = { on_open("recovery_key_view") },
+        )
+        v_gap(AsterSpacing.xs)
+        AsterSecondaryButton(
+            label = if (regenerating) stringResource(R.string.regenerating) else stringResource(R.string.regenerate_recovery_codes),
+            onClick = { show_regen_confirm = true },
+            enabled = !regenerating,
+        )
+
+        v_gap(AsterSpacing.lg)
+        section_label(stringResource(R.string.storage_format))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
+        ) {
+            storage_format_card(
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.storage_format_aster),
+                subtitle = stringResource(R.string.storage_format_aster_sub),
+                image_url = "https://app.astermail.org/settings/aster_server.webp",
+                selected = prefs?.storage_format != "ipfs",
+                on_select = { toggle { it.copy(storage_format = "aster") } },
+            )
+            storage_format_card(
+                modifier = Modifier.fillMaxWidth(),
+                label = stringResource(R.string.storage_format_ipfs),
+                subtitle = stringResource(R.string.storage_format_ipfs_sub),
+                image_url = "https://app.astermail.org/settings/decentralized.webp",
+                selected = prefs?.storage_format == "ipfs",
+                on_select = { toggle { it.copy(storage_format = "ipfs") } },
+            )
+        }
+
+        v_gap(AsterSpacing.lg)
+        section_label(stringResource(R.string.encryption_behavior))
+        AsterCard(modifier = Modifier.fillMaxWidth()) {
+            detail_row(
+                title = stringResource(R.string.auto_discover_keys),
+                subtitle = stringResource(R.string.auto_discover_keys_sub),
+                info_title = "Auto-discover Keys",
+                info_description = "Automatically fetches encryption keys for your contacts so you can send them encrypted mail without any manual setup.",
+                trailing = {
+                    Switch(
+                        checked = state.encryption_settings?.auto_discover_keys != false,
+                        onCheckedChange = { vm.toggle_auto_discover_keys() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+            AsterDivider()
+            detail_row(
+                title = stringResource(R.string.encrypt_by_default),
+                subtitle = stringResource(R.string.encrypt_by_default_sub),
+                info_title = "Encrypt by Default",
+                info_description = "Automatically encrypts outgoing emails when a recipient's public key is available. No need to toggle encryption per message.",
+                trailing = {
+                    Switch(
+                        checked = state.encryption_settings?.encrypt_by_default == true,
+                        onCheckedChange = { vm.toggle_encrypt_by_default() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+            AsterDivider()
+            detail_row(
+                title = stringResource(R.string.require_encryption),
+                subtitle = stringResource(R.string.require_encryption_sub),
+                info_title = "Require Encryption",
+                info_description = "Only send emails that can be encrypted end-to-end. If a recipient doesn't have a PGP key, the message won't send. Only turn this on if you never email people outside of PGP.",
+                trailing = {
+                    Switch(
+                        checked = prefs?.require_encryption == true,
+                        onCheckedChange = { toggle { it.copy(require_encryption = !it.require_encryption) } },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+            AsterDivider()
+            detail_row(
+                title = stringResource(R.string.show_encryption_indicators),
+                subtitle = stringResource(R.string.show_encryption_indicators_sub),
+                info_title = "Encryption Indicators",
+                info_description = "Shows a lock icon on emails to tell you whether a message is encrypted, signed, or neither. Handy for knowing what's protected at a glance.",
+                trailing = {
+                    Switch(
+                        checked = prefs?.show_encryption_indicators != false,
+                        onCheckedChange = { toggle { it.copy(show_encryption_indicators = !it.show_encryption_indicators) } },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+            AsterDivider()
+            detail_row(
+                title = stringResource(R.string.publish_to_wkd),
+                subtitle = stringResource(R.string.publish_to_wkd_sub),
+                info_title = "What is WKD?",
+                info_description = "A standard that lets email apps like Thunderbird or Proton automatically find your public key. People can send you encrypted mail without you needing to share your key manually.",
+                trailing = {
+                    Switch(
+                        checked = state.wkd_status?.published == true,
+                        onCheckedChange = { vm.toggle_wkd_publishing() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+            AsterDivider()
+            detail_row(
+                title = stringResource(R.string.publish_to_keyservers),
+                subtitle = stringResource(R.string.publish_to_keyservers_sub),
+                info_title = "What are Keyservers?",
+                info_description = "Public directories where PGP keys are searchable by email. Publishing here lets anyone find your key. Heads up: most keyservers don't let you fully remove a key once it's published.",
+                trailing = {
+                    Switch(
+                        checked = state.keyserver_status?.published == true,
+                        onCheckedChange = { vm.toggle_keyserver_publishing() },
+                        colors = SwitchDefaults.colors(
+                            checkedTrackColor = colors.accent_blue,
+                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                        ),
+                    )
+                },
+            )
+        }
+
+        v_gap(AsterSpacing.xxl)
+    }
+
+    if (show_export_private_dialog) {
+        val context_export = context
+        AlertDialog(
+            onDismissRequest = { if (!exporting_private_key) { show_export_private_dialog = false; export_private_password = "" } },
+            containerColor = colors.bg_card,
+            title = {
+                Text(stringResource(R.string.export_private_key_dialog_title), color = colors.text_primary, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+            },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(AsterSpacing.sm)) {
+                    Text(
+                        stringResource(R.string.export_private_key_message),
+                        color = colors.text_secondary,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                    OutlinedTextField(
+                        value = export_private_password,
+                        onValueChange = { export_private_password = it; export_private_error = null },
+                        label = { Text(stringResource(R.string.export_private_key_password_label)) },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        isError = export_private_error != null,
+                        supportingText = export_private_error?.let { err -> { Text(err, color = colors.danger, fontSize = 12.sp) } },
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (export_private_password.isNotBlank() && !exporting_private_key) {
+                            exporting_private_key = true
+                            export_private_error = null
+                            scope.launch {
+                                val armored = vm.export_private_key_now(export_private_password)
+                                exporting_private_key = false
+                                if (armored != null) {
+                                    show_export_private_dialog = false
+                                    export_private_password = ""
+                                    copy_to_clipboard(context_export, "private_key", armored)
+                                    Toast.makeText(context_export, context_export.getString(R.string.toast_private_key_copied), Toast.LENGTH_LONG).show()
+                                } else {
+                                    export_private_error = context_export.getString(R.string.error_private_key_export)
+                                }
+                            }
+                        }
+                    },
+                    enabled = export_private_password.isNotBlank() && !exporting_private_key,
+                ) {
+                    Text(if (exporting_private_key) stringResource(R.string.export_private_key_exporting) else stringResource(R.string.export_private_key_button), color = colors.danger)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { if (!exporting_private_key) { show_export_private_dialog = false; export_private_password = "" } }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+        )
+    }
+
+    if (show_regen_confirm) {
+        AlertDialog(
+            onDismissRequest = { show_regen_confirm = false },
+            containerColor = colors.bg_card,
+            title = {
+                Text(
+                    text = stringResource(R.string.regenerate_recovery_codes_title),
+                    color = colors.text_primary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+            text = {
+                Text(
+                    text = stringResource(R.string.regenerate_recovery_codes_message),
+                    color = colors.text_secondary,
+                    fontSize = 14.sp,
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        show_regen_confirm = false
+                        scope.launch {
+                            regenerating = true
+                            val codes = vm.regenerate_recovery_codes_now()
+                            regenerating = false
+                            if (codes.isNotEmpty()) {
+                                new_recovery_codes = codes
+                                show_new_codes_dialog = true
+                            }
+                        }
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.regenerate),
+                        color = colors.danger,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { show_regen_confirm = false }) {
+                    Text(
+                        text = stringResource(R.string.cancel),
+                        color = colors.text_secondary,
+                    )
+                }
+            },
+        )
+    }
+
+    if (show_new_codes_dialog && new_recovery_codes.isNotEmpty()) {
+        val context_dialog = LocalContext.current
+        AlertDialog(
+            onDismissRequest = {},
+            containerColor = colors.bg_card,
+            title = {
+                Text(
+                    text = stringResource(R.string.new_recovery_codes_title),
+                    color = colors.text_primary,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = stringResource(R.string.new_recovery_codes_message),
+                        color = colors.warning,
+                        fontSize = 13.sp,
+                    )
+                    Spacer(Modifier.size(AsterSpacing.md))
+                    new_recovery_codes.chunked(2).forEach { pair ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                        ) {
+                            pair.forEach { code ->
+                                Text(
+                                    text = code,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 13.sp,
+                                    color = colors.accent_blue,
+                                )
+                            }
+                        }
+                    }
+                    Spacer(Modifier.size(AsterSpacing.sm))
+                    TextButton(
+                        onClick = {
+                            copy_to_clipboard(
+                                context_dialog,
+                                "recovery_codes",
+                                new_recovery_codes.joinToString("\n"),
+                            )
+                            Toast.makeText(context_dialog, context_dialog.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                        },
+                    ) {
+                        Text(
+                            text = stringResource(R.string.copy_all_codes),
+                            color = colors.accent_blue,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        show_new_codes_dialog = false
+                        new_recovery_codes = emptyList()
+                    },
+                ) {
+                    Text(
+                        text = stringResource(R.string.done),
+                        color = colors.accent_blue,
+                    )
+                }
+            },
+        )
+    }
+}
+
+@Composable
+private fun encryption_feature_row(
+    title: String,
+    subtitle: String,
+    colors: org.astermail.android.design.AsterSemanticColors,
+) {
+    Row(
+        modifier = Modifier.padding(vertical = 3.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.Check,
+            contentDescription = null,
+            tint = colors.success,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(AsterSpacing.sm))
+        Column {
+            Text(
+                text = title,
+                color = colors.text_primary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+            )
+            Text(
+                text = subtitle,
+                color = colors.text_tertiary,
+                fontSize = 12.sp,
+            )
+        }
+    }
+}
+
+@Composable
+private fun storage_format_card(
+    modifier: Modifier = Modifier,
+    label: String,
+    subtitle: String,
+    image_url: String,
+    selected: Boolean,
+    on_select: () -> Unit,
+) {
+    val colors = AsterMaterial.colors
+    Column(
+        modifier = modifier
+            .clip(SquircleShape(14.dp))
+            .background(colors.bg_secondary)
+            .border(
+                width = if (selected) 2.dp else 1.dp,
+                color = if (selected) colors.accent_blue else colors.border_secondary,
+                shape = SquircleShape(14.dp),
+            )
+            .clickable(onClick = on_select),
+    ) {
+        coil.compose.AsyncImage(
+            model = image_url,
+            contentDescription = label,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .fillMaxWidth()
+                .aspectRatio(5f / 3f)
+                .clip(androidx.compose.foundation.shape.RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 0.dp, bottomEnd = 0.dp)),
+        )
+        AsterDivider(modifier = Modifier)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    color = colors.text_primary,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(text = subtitle, color = colors.text_tertiary, fontSize = 10.sp)
+            }
+            Box(
+                modifier = Modifier
+                    .size(16.dp)
+                    .clip(CircleShape)
+                    .background(if (selected) colors.accent_blue else Color.Transparent)
+                    .border(1.5.dp, if (selected) colors.accent_blue else colors.border_primary, CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (selected) {
+                    Icon(Icons.Outlined.Check, null, tint = Color.White, modifier = Modifier.size(10.dp))
+                }
+            }
+        }
+    }
+}
+
+private fun copy_to_clipboard(context: Context, label: String, value: String) {
+    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+    val clip = ClipData.newPlainText(label, value)
+    clip.description.extras = android.os.PersistableBundle().apply {
+        putBoolean("android.content.extra.IS_SENSITIVE", true)
+    }
+    clipboard.setPrimaryClip(clip)
+}

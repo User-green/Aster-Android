@@ -1,0 +1,1 @@
+Added F-Droid flavor with UnifiedPush-only notifications (no Firebase/Google dependencies). Push notifications via any UnifiedPush distributor; 15-minute polling fallback when none is installed.

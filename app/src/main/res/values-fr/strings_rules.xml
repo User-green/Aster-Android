@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="rules_section_sender">Expéditeur</string>
+    <string name="rules_section_recipients">Destinataires</string>
+    <string name="rules_section_content">Contenu</string>
+    <string name="rules_section_attachments_flags">Pièces jointes et indicateurs</string>
+    <string name="rules_section_numeric_date_auth">Numérique, date et authentification</string>
+
+    <string name="rules_op_is">est</string>
+    <string name="rules_op_is_not">n\'est pas</string>
+    <string name="rules_op_contains">contient</string>
+    <string name="rules_op_does_not_contain">ne contient pas</string>
+    <string name="rules_op_starts_with">commence par</string>
+    <string name="rules_op_ends_with">se termine par</string>
+    <string name="rules_op_is_empty">est vide</string>
+    <string name="rules_op_matches_domain">correspond au domaine</string>
+    <string name="rules_op_matches_regex">correspond à l\'expression régulière</string>
+    <string name="rules_op_greater_than">supérieur à</string>
+    <string name="rules_op_less_than">inférieur à</string>
+    <string name="rules_op_equals">égal à</string>
+    <string name="rules_op_older_than">plus ancien que</string>
+    <string name="rules_op_newer_than">plus récent que</string>
+
+    <string name="rules_value_yes">oui</string>
+    <string name="rules_value_no">non</string>
+    <string name="rules_value_read">lu</string>
+    <string name="rules_value_unread">non lu</string>
+    <string name="rules_value_on">activé</string>
+    <string name="rules_value_off">désactivé</string>
+    <string name="rules_value_days">%1$d jours</string>
+    <string name="rules_value_label_count">%1$d libellés</string>
+    <string name="rules_value_placeholder_ellipsis">...</string>
+
+    <string name="rules_unit_kb">Ko</string>
+    <string name="rules_unit_mb">Mo</string>
+    <string name="rules_unit_gb">Go</string>
+
+    <string name="rules_category_primary">Principal</string>
+    <string name="rules_category_important">Important</string>
+    <string name="rules_category_promotions">Promotions</string>
+    <string name="rules_category_social">Réseaux sociaux</string>
+    <string name="rules_category_updates">Mises à jour</string>
+    <string name="rules_category_forums">Forums</string>
+
+    <string name="rules_no_labels">Aucun libellé pour l\'instant</string>
+    <string name="rules_remove">Supprimer</string>
+    <string name="rules_delete_title">Supprimer la règle ?</string>
+    <string name="rules_delete_message">Cette règle ne s\'appliquera plus aux nouveaux messages. Les modifications existantes ne sont pas annulées.</string>
+    <string name="rules_save_failed">Impossible d\'enregistrer la règle</string>
+    <string name="rules_emails_count">%1$d e-mails</string>
+</resources>

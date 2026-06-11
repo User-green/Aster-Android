@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="notif_channel_new_mail_name">Nouveau courrier</string>
+    <string name="notif_channel_new_mail_description">Notifications pour les nouveaux e-mails entrants</string>
+    <string name="notif_new_message">Nouveau message</string>
+    <string name="notif_action_reply">Répondre</string>
+    <string name="notif_action_mark_read">Marquer comme lu</string>
+    <string name="notif_action_archive">Archiver</string>
+    <string name="notif_group_summary_new_mail">Nouveau courrier</string>
+    <string name="notif_battery_opt_title">Activité en arrière-plan illimitée</string>
+    <string name="notif_battery_opt_subtitle">Requis pour des notifications fiables. Appuyez pour activer dans les paramètres système.</string>
+</resources>

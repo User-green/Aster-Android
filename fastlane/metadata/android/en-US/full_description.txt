@@ -1,0 +1,20 @@
+Aster Mail is a privacy-first email client for astermail.org accounts.
+
+Your messages are encrypted client-side before leaving your device. The server never sees your plaintext content - only you hold your keys.
+
+Features:
+- End-to-end encrypted mail between Aster users using a post-quantum ratchet protocol
+- Zero-knowledge architecture: server stores only encrypted ciphertext
+- Custom domain support with automatic DKIM signing
+- Push notifications via UnifiedPush (no Google services required) with polling fallback
+- Offline-capable with local encrypted storage
+- Biometric lock
+- Private mode notifications (hides sender and subject on lock screen)
+- Quiet hours for notification scheduling
+- Contact avatars with graceful fallback
+- Attachment support with external app handoff
+- AGPL-3.0 licensed
+
+This F-Droid build contains no Firebase or Google Play Services dependencies. Push notifications are delivered via any UnifiedPush-compatible distributor (such as ntfy or Unified Push). Background polling provides a fallback when no distributor is installed.
+
+Source code: https://github.com/Aster-Community/Aster-Mail

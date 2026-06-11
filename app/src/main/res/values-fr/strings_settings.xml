@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_compare_plans">Comparer les forfaits</string>
+
+    <string name="settings_cat_storage_limits">Stockage &amp; limites</string>
+    <string name="settings_cat_email_features">Fonctionnalités e-mail</string>
+    <string name="settings_cat_organization">Organisation</string>
+    <string name="settings_cat_security">Sécurité</string>
+    <string name="settings_cat_privacy">Confidentialité</string>
+    <string name="settings_cat_import_export">Import &amp; export</string>
+    <string name="settings_cat_support">Support</string>
+    <string name="settings_cat_apps_integrations">Applications &amp; intégrations</string>
+
+    <string name="settings_feat_secure_storage">Stockage sécurisé</string>
+    <string name="settings_feat_max_attachment">Taille max des pièces jointes</string>
+    <string name="settings_feat_daily_send">Limite d\'envoi quotidien</string>
+    <string name="settings_feat_email_retention">Conservation des e-mails</string>
+    <string name="settings_feat_e2ee">Chiffrement de bout en bout</string>
+    <string name="settings_feat_zero_knowledge">Architecture zéro connaissance</string>
+    <string name="settings_feat_aliases">Alias e-mail</string>
+    <string name="settings_feat_custom_domains">Domaines personnalisés</string>
+    <string name="settings_feat_scheduled_send">Envoi programmé</string>
+    <string name="settings_feat_undo_send">Annulation d\'envoi</string>
+    <string name="settings_feat_read_receipts">Accusés de réception</string>
+    <string name="settings_feat_email_templates">Modèles d\'e-mail</string>
+    <string name="settings_feat_auto_responder">Réponse automatique</string>
+    <string name="settings_feat_alias_avatars">Avatars d\'alias</string>
+    <string name="settings_feat_folders">Dossiers</string>
+    <string name="settings_feat_labels">Libellés</string>
+    <string name="settings_feat_smart_folders">Dossiers intelligents</string>
+    <string name="settings_feat_advanced_search">Recherche avancée</string>
+    <string name="settings_feat_search_history">Historique de recherche</string>
+    <string name="settings_feat_contacts">Contacts</string>
+    <string name="settings_feat_contact_groups">Groupes de contacts</string>
+    <string name="settings_feat_two_factor">Authentification à deux facteurs</string>
+    <string name="settings_feat_recovery_codes">Codes de récupération</string>
+    <string name="settings_feat_password_folders">Dossiers protégés par mot de passe</string>
+    <string name="settings_feat_session_mgmt">Gestion des sessions</string>
+    <string name="settings_feat_login_notifs">Notifications de connexion</string>
+    <string name="settings_feat_encrypted_exports">Exports chiffrés</string>
+    <string name="settings_feat_hardware_keys">Clés de sécurité matérielles</string>
+    <string name="settings_feat_no_ads">Pas de publicités</string>
+    <string name="settings_feat_no_tracking">Pas de traçage</string>
+    <string name="settings_feat_anonymous_signup">Inscription anonyme</string>
+    <string name="settings_feat_tor_support">Support Tor</string>
+    <string name="settings_feat_link_tracking">Protection contre le suivi des liens</string>
+    <string name="settings_feat_tracker_protection">Protection contre les traqueurs</string>
+    <string name="settings_feat_remote_image_blocking">Blocage des images distantes</string>
+    <string name="settings_feat_import_gmail">Import depuis Gmail</string>
+    <string name="settings_feat_import_outlook">Import depuis Outlook</string>
+    <string name="settings_feat_mbox_import">Import MBOX</string>
+    <string name="settings_feat_export_emails">Export des e-mails</string>
+    <string name="settings_feat_export_contacts">Export des contacts</string>
+    <string name="settings_feat_help_center">Centre d\'aide</string>
+    <string name="settings_feat_community_forum">Forum communautaire</string>
+    <string name="settings_feat_email_support">Support par e-mail</string>
+    <string name="settings_feat_priority_support">Support prioritaire</string>
+    <string name="settings_feat_response_time">Délai de réponse</string>
+    <string name="settings_feat_web_app">Application web</string>
+    <string name="settings_feat_ios_app">Application iOS</string>
+    <string name="settings_feat_android_app">Application Android</string>
+    <string name="settings_feat_desktop_app">Application bureau</string>
+    <string name="settings_feat_browser_ext">Extension navigateur</string>
+    <string name="settings_feat_imap_smtp">IMAP / SMTP</string>
+
+    <string name="settings_val_unlimited">Illimité</string>
+    <string name="settings_val_dash">-</string>
+    <string name="settings_val_gb">%1$d Go</string>
+    <string name="settings_val_tb">%1$d To</string>
+    <string name="settings_val_mb">%1$d Mo</string>
+    <string name="settings_val_emails_per_day">%1$d e-mails</string>
+    <string name="settings_val_days">%1$d jours</string>
+    <string name="settings_val_one_year">1 an</string>
+    <string name="settings_val_hours">%1$d heures</string>
+    <string name="settings_val_count">%1$d</string>
+
+    <string name="settings_plan_free_tagline">Tout ce dont vous avez besoin pour commencer avec un e-mail privé et chiffré.</string>
+    <string name="settings_plan_star_tagline">Plus de stockage, plus d\'alias et votre premier domaine personnalisé.</string>
+    <string name="settings_plan_nova_tagline">Plus de stockage, des domaines personnalisés et des alias illimités.</string>
+    <string name="settings_plan_supernova_tagline">Stockage maximum, tout illimité et support dédié.</string>
+
+    <string name="settings_plan_lead_star">Tout dans Star, plus :</string>
+    <string name="settings_plan_lead_nova">Tout dans Nova, plus :</string>
+
+    <string name="settings_plan_bullet_e2ee">Chiffrement de bout en bout</string>
+    <string name="settings_plan_bullet_zero_knowledge">Architecture zéro connaissance</string>
+
+    <string name="settings_plan_bullet_star_storage">50 Go de stockage chiffré</string>
+    <string name="settings_plan_bullet_star_attachments">Pièces jointes jusqu\'à 50 Mo</string>
+    <string name="settings_plan_bullet_star_aliases">15 alias e-mail</string>
+    <string name="settings_plan_bullet_star_domains">5 domaines personnalisés</string>
+    <string name="settings_plan_bullet_unlimited_daily_emails">E-mails quotidiens illimités</string>
+    <string name="settings_plan_bullet_star_templates">10 modèles d\'e-mail</string>
+    <string name="settings_plan_bullet_tracker_protection">Protection contre les traqueurs</string>
+    <string name="settings_plan_bullet_vacation_reply">Réponse automatique d\'absence</string>
+    <string name="settings_plan_bullet_catch_all">Adresse e-mail attrape-tout</string>
+    <string name="settings_plan_bullet_auto_forwarding">Transfert automatique</string>
+    <string name="settings_plan_bullet_quiet_hours">Heures calmes</string>
+    <string name="settings_plan_bullet_custom_avatars">Avatars d\'alias et de domaine personnalisés</string>
+    <string name="settings_plan_bullet_external_accounts">Comptes externes (IMAP &amp; POP3)</string>
+    <string name="settings_plan_bullet_bridge_access">Accès application mail (IMAP &amp; SMTP) via Aster Bridge</string>
+    <string name="settings_plan_bullet_priority_support">Support prioritaire</string>
+
+    <string name="settings_plan_bullet_nova_storage">500 Go de stockage chiffré</string>
+    <string name="settings_plan_bullet_nova_attachments">Pièces jointes jusqu\'à 100 Mo</string>
+    <string name="settings_plan_bullet_unlimited_aliases">Alias e-mail illimités</string>
+    <string name="settings_plan_bullet_nova_domains">30 domaines personnalisés</string>
+    <string name="settings_plan_bullet_unlimited_templates">Modèles d\'e-mail illimités</string>
+    <string name="settings_plan_bullet_unlimited_signatures">Signatures HTML illimitées</string>
+    <string name="settings_plan_bullet_carddav_import">Import de contacts CardDAV</string>
+    <string name="settings_plan_bullet_contact_merge">Assistant de fusion de contacts</string>
+    <string name="settings_plan_bullet_encrypted_export">Export chiffré</string>
+    <string name="settings_plan_bullet_protected_folders">Dossiers protégés par mot de passe</string>
+    <string name="settings_plan_bullet_key_rotation">Intervalles de rotation de clés personnalisés</string>
+
+    <string name="settings_plan_bullet_supernova_storage">5 To de stockage chiffré</string>
+    <string name="settings_plan_bullet_supernova_attachments">Pièces jointes jusqu\'à 250 Mo</string>
+    <string name="settings_plan_bullet_unlimited_domains">Domaines personnalisés illimités</string>
+    <string name="settings_plan_bullet_receipt_tracking">Suivi des reçus et colis</string>
+    <string name="settings_plan_bullet_dedicated_support">Support en direct dédié</string>
+    <string name="settings_plan_bullet_early_access">Accès anticipé aux nouvelles fonctionnalités</string>
+
+    <string name="settings_plan_bullet_free_storage">10 Go de stockage chiffré</string>
+    <string name="settings_plan_bullet_free_aliases">5 alias e-mail</string>
+
+    <string name="settings_price_per_month">%1$.2f $ / mois</string>
+    <string name="settings_price_per_interval">%1$.2f $ / %2$s</string>
+    <string name="settings_price_per_mo">%1$.2f $</string>
+    <string name="settings_price_per_yr">%1$.2f $</string>
+    <string name="settings_suffix_per_mo">/mois</string>
+    <string name="settings_suffix_per_yr">/an</string>
+    <string name="settings_save_yearly">Économisez %1$s</string>
+    <string name="settings_save_amount">%1$.2f $</string>
+    <string name="settings_billing_monthly">Mensuel</string>
+    <string name="settings_billing_yearly">Annuel</string>
+    <string name="settings_prices_usd_note">Prix en USD. Le montant final est déterminé lors du paiement.</string>
+    <string name="settings_interval_default">mois</string>
+
+    <string name="settings_diagnostics_clip_label">Diagnostics</string>
+
+    <string name="log_out_confirm_title">Se déconnecter ?</string>
+    <string name="log_out_confirm_message">Se déconnecter de %1$s sur cet appareil ?</string>
+    <string name="revoke_session_confirm_message">Déconnecter cet appareil de votre compte ?</string>
+    <string name="sign_out_all_other_confirm_message">Déconnecter tous les appareils sauf celui-ci ?</string>
+</resources>
