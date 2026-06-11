@@ -2503,6 +2503,12 @@ private fun email_html_view(
         "extra_large" -> 140
         else -> 100
     }
+    val email_font_px = when (settings_state.preferences?.font_size_scale) {
+        "small" -> 12
+        "large" -> 17
+        "extra_large" -> 20
+        else -> 14
+    }
     val forwarded_label = stringResource(R.string.forwarded_message_label)
 
     var content_height_dp by remember(html) { mutableStateOf(0.dp) }
@@ -2528,11 +2534,11 @@ private fun email_html_view(
         val sys_font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
         val body_style = when {
             is_html_body && !has_newsletter_layout ->
-                "background-color:transparent;color:${if (simple_dark) "#e5e5e5" else "#111827"};margin:0;padding:6px 10px;font-family:$sys_font;font-size:14px;line-height:1.6;word-wrap:break-word"
+                "background-color:transparent;color:${if (simple_dark) "#e5e5e5" else "#111827"};margin:0;padding:6px 10px;font-family:$sys_font;font-size:${email_font_px}px;line-height:1.6;word-wrap:break-word"
             is_html_body ->
                 "background-color:transparent;margin:0;padding:0"
             else ->
-                "background-color:transparent;color:$fg_hex;margin:0;padding:6px 10px;font-family:$sys_font;font-size:14px;line-height:1.6;word-wrap:break-word"
+                "background-color:transparent;color:$fg_hex;margin:0;padding:6px 10px;font-family:$sys_font;font-size:${email_font_px}px;line-height:1.6;word-wrap:break-word"
         }
 
         val dark_css = if (simple_dark) """
@@ -2580,8 +2586,8 @@ a,a *{color:#60a5fa!important}
 $viewport_meta
 $color_scheme_meta
 <style>
-html{height:auto!important;min-height:0!important;background-color:transparent}
-body{height:auto!important;min-height:0!important;margin:0;overflow-x:hidden;overflow-y:hidden}
+html{height:auto!important;min-height:0!important;background-color:transparent;font-size:${email_font_px}px}
+body{height:auto!important;min-height:0!important;margin:0;overflow-x:hidden;overflow-y:hidden;font-size:${email_font_px}px}
 *{box-sizing:border-box}
 img{max-width:100%!important;height:auto!important}
 a{color:$link_hex;text-decoration:underline}
@@ -2593,7 +2599,7 @@ blockquote{margin:8px 0;padding-left:12px;border-left:2px solid $bq_border;color
 .aster-quoted-wrapper{margin-top:8px}
 .aster-quote-toggle{display:inline-flex;align-items:center;justify-content:center;height:16px;padding:0 4px;border-radius:3px;border:1px solid rgba(128,128,128,0.25);background:rgba(128,128,128,0.08);color:rgba(100,100,100,0.7);cursor:pointer;font-size:8px;letter-spacing:1.5px;line-height:1;vertical-align:middle;user-select:none;-webkit-tap-highlight-color:transparent}
 .aster-quote-toggle:active,.aster-quote-toggle.aster-quote-expanded{background:rgba(128,128,128,0.2);border-color:rgba(128,128,128,0.45)}
-.aster-quoted-content{margin-top:8px;color:$bq_color;font-size:14px;line-height:20px}
+.aster-quoted-content{margin-top:8px;color:$bq_color;font-size:${email_font_px}px;line-height:1.4}
 .aster-quoted-content .aster_quote_attr,.aster-quoted-content .gmail_attr{color:$bq_color;font-size:12px;margin-bottom:4px}
 .aster-quoted-content blockquote{margin:0;padding:0 0 0 12px;border-left:2px solid $bq_border2;color:$bq_color}
 .aster-quoted-content blockquote blockquote{border-left-color:$bq_border3}
