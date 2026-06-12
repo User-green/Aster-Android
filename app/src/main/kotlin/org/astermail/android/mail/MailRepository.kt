@@ -492,6 +492,11 @@ class MailRepository @Inject constructor(
         }
     }
 
+    suspend fun delete_draft(draft_id: String): Result<Unit> = runCatching {
+        mail_api.delete_draft(draft_id)
+        Unit
+    }
+
     suspend fun delete_permanent(item_id: String): Result<Unit> = runCatching {
         mail_api.delete_permanent(item_id)
         Unit
@@ -1444,7 +1449,7 @@ class MailRepository @Inject constructor(
         )
         val new_id = response.id ?: throw IllegalStateException("no draft id returned")
         if (!existing_draft_id.isNullOrBlank() && existing_draft_id != new_id) {
-            runCatching { mail_api.delete_message(existing_draft_id) }
+            runCatching { mail_api.delete_draft(existing_draft_id) }
         }
         new_id
     }

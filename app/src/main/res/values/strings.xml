@@ -400,6 +400,8 @@
     <string name="restored_to_inbox">Restored to inbox</string>
     <string name="failed_to_restore">Failed to restore</string>
     <string name="failed_to_save_draft">Failed to save draft</string>
+    <string name="draft_deleted">Deleted %d draft(s)</string>
+    <string name="failed_to_delete_draft">Failed to delete draft</string>
     <string name="deleted_permanently">Deleted permanently</string>
     <string name="failed_to_delete">Failed to delete</string>
     <string name="marked_read_count">Marked %d message(s) as read</string>

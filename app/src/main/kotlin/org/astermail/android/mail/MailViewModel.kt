@@ -901,6 +901,10 @@ class MailViewModel @Inject constructor(
     }
 
     fun trash(item_ids: List<String>, thread_count: Int = 1) {
+        if (_inbox_state.value.current_folder == "drafts") {
+            delete_draft_items(item_ids)
+            return
+        }
         val had_demo = DEMO_PHISH_ITEM_ID in item_ids
         @Suppress("NAME_SHADOWING") val item_ids = handle_demo_in(item_ids)
         if (item_ids.isEmpty()) {
@@ -935,6 +939,28 @@ class MailViewModel @Inject constructor(
             } catch (_: Throwable) {
                 undo_local_restore(removed_items)
                 emit_toast(context.getString(R.string.failed_to_trash))
+            }
+        }
+    }
+
+    private fun delete_draft_items(item_ids: List<String>) {
+        if (item_ids.isEmpty()) return
+        val id_set = item_ids.toHashSet()
+        val previous = _inbox_state.value.items
+        val removed_items = previous.filter { it.id in id_set }
+        _inbox_state.value = _inbox_state.value.copy(
+            items = previous.filter { it.id !in id_set },
+        )
+        viewModelScope.launch {
+            val all_succeeded = item_ids.map { id ->
+                repository.delete_draft(id).isSuccess
+            }.all { it }
+            if (all_succeeded) {
+                load_stats()
+                emit_toast(context.getString(R.string.draft_deleted, item_ids.size))
+            } else {
+                undo_local_restore(removed_items)
+                emit_toast(context.getString(R.string.failed_to_delete_draft))
             }
         }
     }
