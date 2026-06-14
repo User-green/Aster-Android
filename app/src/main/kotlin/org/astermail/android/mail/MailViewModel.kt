@@ -46,6 +46,8 @@ import org.astermail.android.api.mail.MailUserStatsResponse
 import org.astermail.android.api.send.ExternalAttachmentPayload
 import org.astermail.android.ui.mail.MessageAttachment
 
+private const val INBOX_FETCH_BACKSTOP_MS = 18_000L
+
 data class BatchActionState(
     val action_key: String,
     val count: Int,
@@ -353,14 +355,17 @@ class MailViewModel @Inject constructor(
                 }
             }
             var result = runCatching {
-                kotlinx.coroutines.withTimeout(10_000L) {
+                kotlinx.coroutines.withTimeout(INBOX_FETCH_BACKSTOP_MS) {
                     fetch_for_folder(folder).getOrThrow()
                 }
             }
-            if (result.isFailure && _inbox_state.value.current_folder == folder) {
+            if (result.isFailure &&
+                _inbox_state.value.current_folder == folder &&
+                !is_timeout_failure(result.exceptionOrNull())
+            ) {
                 kotlinx.coroutines.delay(500L)
                 result = runCatching {
-                    kotlinx.coroutines.withTimeout(10_000L) {
+                    kotlinx.coroutines.withTimeout(INBOX_FETCH_BACKSTOP_MS) {
                         fetch_for_folder(folder).getOrThrow()
                     }
                 }
@@ -394,7 +399,7 @@ class MailViewModel @Inject constructor(
                     _inbox_state.value = _inbox_state.value.copy(
                         is_loading = false,
                         initial = false,
-                        error = if (keep_items) null else (t.message ?: context.getString(R.string.something_went_wrong)),
+                        error = if (keep_items) null else friendly_load_error(t),
                     )
                 },
             )
@@ -405,7 +410,7 @@ class MailViewModel @Inject constructor(
         silent_revalidate_job?.cancel()
         silent_revalidate_job = viewModelScope.launch {
             val result = runCatching {
-                kotlinx.coroutines.withTimeout(10_000L) {
+                kotlinx.coroutines.withTimeout(INBOX_FETCH_BACKSTOP_MS) {
                     fetch_for_folder(folder).getOrThrow()
                 }
             }
@@ -1491,6 +1496,29 @@ class MailViewModel @Inject constructor(
             }
             else -> item.labels.contains(folder) && !item.is_trashed
         }
+    }
+
+    private fun is_timeout_failure(t: Throwable?): Boolean = when (t) {
+        null -> false
+        is kotlinx.coroutines.TimeoutCancellationException -> true
+        is io.ktor.client.plugins.HttpRequestTimeoutException -> true
+        is io.ktor.client.network.sockets.ConnectTimeoutException -> true
+        is io.ktor.client.network.sockets.SocketTimeoutException -> true
+        is java.net.SocketTimeoutException -> true
+        else -> false
+    }
+
+    private fun friendly_load_error(t: Throwable): String {
+        val res = when {
+            is_timeout_failure(t) -> R.string.error_timeout
+            t is org.astermail.android.api.ApiError.NetworkError -> R.string.error_no_connection
+            t is org.astermail.android.api.ApiError.ServerError -> R.string.error_server
+            t is java.net.UnknownHostException ||
+                t is java.net.ConnectException ||
+                t is java.io.IOException -> R.string.error_no_connection
+            else -> R.string.something_went_wrong
+        }
+        return context.getString(res)
     }
 
     private suspend fun fetch_for_folder(

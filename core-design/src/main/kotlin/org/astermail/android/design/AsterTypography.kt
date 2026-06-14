@@ -23,29 +23,30 @@ package org.astermail.android.design
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.googlefonts.GoogleFont
-import androidx.compose.ui.text.googlefonts.Font as GoogleFontFontCompat
 import androidx.compose.ui.unit.sp
 
-private val google_fonts_provider = GoogleFont.Provider(
-    providerAuthority = "com.google.android.gms.fonts",
-    providerPackage = "com.google.android.gms",
-    certificates = R.array.com_google_android_gms_fonts_certs,
+private val roboto_flex_weights = listOf(
+    FontWeight.Normal,
+    FontWeight.Medium,
+    FontWeight.SemiBold,
+    FontWeight.Bold,
 )
 
-private val inter_google_font = GoogleFont("Roboto Flex")
-
+@OptIn(ExperimentalTextApi::class)
 val inter_family = FontFamily(
-    GoogleFontFontCompat(inter_google_font, google_fonts_provider, FontWeight.Normal),
-    GoogleFontFontCompat(inter_google_font, google_fonts_provider, FontWeight.Medium),
-    GoogleFontFontCompat(inter_google_font, google_fonts_provider, FontWeight.SemiBold),
-    GoogleFontFontCompat(inter_google_font, google_fonts_provider, FontWeight.Bold),
-    GoogleFontFontCompat(inter_google_font, google_fonts_provider, FontWeight.Normal, FontStyle.Italic),
+    roboto_flex_weights.map { weight ->
+        Font(
+            R.font.roboto_flex,
+            weight = weight,
+            variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+        )
+    },
 )
 
 val local_dyslexia_font = compositionLocalOf<FontFamily?> { null }

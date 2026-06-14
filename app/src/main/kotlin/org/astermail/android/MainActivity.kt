@@ -1137,13 +1137,13 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
         ?: ""
 
     val api_folders = settings_state.labels
-        .filter { !it.is_system && !it.encrypted_name.isNullOrBlank() }
+        .filter { !it.is_system }
         .filter { it.folder_type == "folder" || it.folder_type == "custom" }
-        .filter { !looks_encrypted(it.encrypted_name) }
         .map { label ->
+            val readable_name = label.encrypted_name?.takeIf { it.isNotBlank() && !looks_encrypted(it) }
             drawer_folder_item(
                 id = label.label_token,
-                label = label.encrypted_name.orEmpty(),
+                label = readable_name ?: drawer_context.getString(R.string.folder_decrypt_failed),
                 icon = Icons.Outlined.Folder,
                 count = label.item_count?.toInt() ?: 0,
             )

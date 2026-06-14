@@ -7,6 +7,8 @@
     <string name="detail_external_images_blocked">This message contains remote content. Loading it can reveal your activity to the sender.</string>
     <string name="detail_external_allow_once">Load once</string>
     <string name="detail_external_always_allow">Always allow</string>
+    <string name="detail_external_images_traffic_blocked">Remote images are blocked to save traffic.</string>
+    <string name="detail_disable_traffic_saving">Disable traffic saving</string>
     <string name="detail_external_dismiss">Not now</string>
     <string name="detail_unsubscribe_title">This sender supports one-click unsubscribe.</string>
     <string name="detail_unsubscribe_subtitle">You will stop receiving messages from this address.</string>
