@@ -30,8 +30,11 @@ import javax.inject.Inject
 import org.astermail.android.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.astermail.android.api.billing.AvailablePlan
 import org.astermail.android.api.billing.BillingApi
 import org.astermail.android.api.billing.BillingHistoryItem
@@ -84,17 +87,19 @@ class BillingViewModel @Inject constructor(
 
     fun load_subscription() {
         viewModelScope.launch {
-            _state.value = _state.value.copy(is_loading = true, error = null)
+            _state.update { it.copy(is_loading = true, error = null) }
             try {
                 val sub = billing_api.get_subscription()
-                _state.value = _state.value.copy(subscription = sub, is_loading = false, error = null)
+                _state.update { it.copy(subscription = sub, is_loading = false, error = null) }
             } catch (t: Throwable) {
                 if (BuildConfig.DEBUG) android.util.Log.w("BillingVM", "get_subscription failed", t)
-                _state.value = _state.value.copy(
-                    is_loading = false,
-                    subscription = null,
-                    error = null,
-                )
+                _state.update {
+                    it.copy(
+                        is_loading = false,
+                        subscription = null,
+                        error = null,
+                    )
+                }
             }
         }
     }
@@ -103,7 +108,7 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val response = billing_api.get_available_plans()
-                _state.value = _state.value.copy(available_plans = response.plans)
+                _state.update { it.copy(available_plans = response.plans) }
             } catch (_: Throwable) {
             }
         }
@@ -113,7 +118,7 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val limits = billing_api.get_plan_limits()
-                _state.value = _state.value.copy(limits = limits)
+                _state.update { it.copy(limits = limits) }
             } catch (_: Throwable) {
             }
         }
@@ -123,7 +128,7 @@ class BillingViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val response = billing_api.get_billing_history(page = 1, per_page = 20)
-                _state.value = _state.value.copy(history = response.items)
+                _state.update { it.copy(history = response.items) }
             } catch (_: Throwable) {
             }
         }
@@ -169,13 +174,20 @@ class BillingViewModel @Inject constructor(
     }
 
     fun cancel_subscription(password: String) {
-        val password_hash = auth_repository.derive_password_hash_b64(password)
-        if (password_hash == null) {
-            _state.value = _state.value.copy(error = ctx.getString(R.string.session_expired_sign_in))
-            return
-        }
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "cancel", error = null, info = null)
+            val password_hash = withContext(Dispatchers.Default) {
+                auth_repository.derive_password_hash_b64(password)
+            }
+            if (password_hash == null) {
+                _state.value = _state.value.copy(
+                    is_acting = false,
+                    acting_action = null,
+                    error = ctx.getString(R.string.session_expired_sign_in),
+                )
+                return@launch
+            }
             try {
                 val response = billing_api.cancel_subscription(
                     CancelSubscriptionRequest(password_hash = password_hash),

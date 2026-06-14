@@ -575,9 +575,9 @@ fun ComposeScreen(
         attachments.isNotEmpty() ||
         inline_images.isNotEmpty()
 
-    val can_send = (to_chips.isNotEmpty() || cc_chips.isNotEmpty() || bcc_chips.isNotEmpty()) &&
-        to_input.isBlank() && cc_input.isBlank() && bcc_input.isBlank() &&
-        !is_sending
+    val has_recipient = to_chips.isNotEmpty() || cc_chips.isNotEmpty() || bcc_chips.isNotEmpty() ||
+        to_input.isNotBlank() || cc_input.isNotBlank() || bcc_input.isNotBlank()
+    val can_send = has_recipient && !is_sending
 
     val try_back: () -> Unit = {
         if (has_unsaved_changes) show_discard_dialog = true else on_back()
@@ -859,7 +859,11 @@ fun ComposeScreen(
 
     fun do_send() {
         if (!send_lock.compareAndSet(false, true)) return
-        if (!can_send) { send_lock.set(false); return }
+        to_input.trim().let { if (it.isNotEmpty()) { to_chips = to_chips + it; to_input = "" } }
+        cc_input.trim().let { if (it.isNotEmpty()) { cc_chips = cc_chips + it; cc_input = "" } }
+        bcc_input.trim().let { if (it.isNotEmpty()) { bcc_chips = bcc_chips + it; bcc_input = "" } }
+        if (to_chips.isEmpty() && cc_chips.isEmpty() && bcc_chips.isEmpty()) { send_lock.set(false); return }
+        if (is_sending) { send_lock.set(false); return }
         is_sending = true
         send_error = null
 

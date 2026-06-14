@@ -24,6 +24,7 @@ package org.astermail.android.mail
 import app.cash.turbine.test
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,19 +52,51 @@ import org.junit.Test
 class MailViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var context: android.content.Context
     private lateinit var repository: MailRepository
+    private lateinit var search_index_manager: SearchIndexManager
     private lateinit var vm: MailViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        io.mockk.mockkStatic(Dispatchers::class)
+        every { Dispatchers.IO } returns dispatcher
+        io.mockk.mockkStatic(android.util.Log::class)
+        every { android.util.Log.i(any(), any()) } returns 0
+        every { android.util.Log.w(any(), any<String>()) } returns 0
+        every { android.util.Log.w(any(), any<String>(), any()) } returns 0
+        every { android.util.Log.w(any(), any<Throwable>()) } returns 0
+        every { android.util.Log.e(any(), any()) } returns 0
+        every { android.util.Log.e(any(), any(), any()) } returns 0
+        every { android.util.Log.d(any(), any()) } returns 0
+        context = mockk(relaxed = true)
+        every { context.getString(org.astermail.android.R.string.something_went_wrong) } returns
+            "Something went wrong"
         repository = mockk(relaxed = true)
-        vm = MailViewModel(repository)
+        search_index_manager = mockk(relaxed = true)
+        every { repository.send_result_events } returns
+            kotlinx.coroutines.flow.MutableSharedFlow()
+        every { repository.pending_undo_send } returns
+            kotlinx.coroutines.flow.MutableStateFlow(null)
+        coEvery { repository.get_stats() } returns Result.success(MailUserStatsResponse())
+        vm = MailViewModel(context, repository, search_index_manager)
     }
 
     @After
     fun teardown() {
+        io.mockk.unmockkStatic(android.util.Log::class)
+        io.mockk.unmockkStatic(Dispatchers::class)
         Dispatchers.resetMain()
+    }
+
+    private fun clear_dispatcher_records() {
+        io.mockk.clearStaticMockk(
+            Dispatchers::class,
+            answers = false,
+            recordedCalls = true,
+            childMocks = false,
+        )
     }
 
     private fun fake_inbox_page(
@@ -122,7 +155,7 @@ class MailViewModelTest {
 
         val state = vm.inbox_state.value
         assertFalse(state.is_loading)
-        assertEquals("network failure", state.error)
+        assertEquals("Something went wrong", state.error)
         assertTrue(state.items.isEmpty())
     }
 
@@ -138,6 +171,7 @@ class MailViewModelTest {
         vm.load_inbox()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), any(), any(), any()) }
     }
 
@@ -224,6 +258,7 @@ class MailViewModelTest {
         vm.load_more()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), any(), any(), any()) }
     }
 
@@ -244,6 +279,7 @@ class MailViewModelTest {
         vm.load_more()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), cursor = eq("c1"), any(), any()) }
     }
 
@@ -251,7 +287,7 @@ class MailViewModelTest {
     fun `mark_read updates state and calls repository`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.mark_read("id_1", true) } returns Result.success(Unit)
+        coEvery { repository.mark_read("id_1", true, any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -261,14 +297,14 @@ class MailViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.inbox_state.value.items[0].is_read)
-        coVerify { repository.mark_read("id_1", true) }
+        coVerify { repository.mark_read("id_1", true, any()) }
     }
 
     @Test
     fun `mark_unread updates state and calls repository`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.mark_read("id_2", false) } returns Result.success(Unit)
+        coEvery { repository.mark_read("id_2", false, any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -278,7 +314,7 @@ class MailViewModelTest {
         advanceUntilIdle()
 
         assertFalse(vm.inbox_state.value.items[1].is_read)
-        coVerify { repository.mark_read("id_2", false) }
+        coVerify { repository.mark_read("id_2", false, any()) }
     }
 
     @Test
@@ -294,13 +330,13 @@ class MailViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.inbox_state.value.items[0].is_starred)
-        coVerify { repository.toggle_star("id_1", true) }
+        coVerify { repository.toggle_star("id_1", true, any()) }
 
         vm.toggle_star("id_1")
         advanceUntilIdle()
 
         assertFalse(vm.inbox_state.value.items[0].is_starred)
-        coVerify { repository.toggle_star("id_1", false) }
+        coVerify { repository.toggle_star("id_1", false, any()) }
     }
 
     @Test
@@ -314,14 +350,15 @@ class MailViewModelTest {
         vm.toggle_star("nonexistent")
         advanceUntilIdle()
 
-        coVerify(exactly = 0) { repository.toggle_star(any(), any()) }
+        io.mockk.unmockkStatic(Dispatchers::class)
+        coVerify(exactly = 0) { repository.toggle_star(any(), any(), any()) }
     }
 
     @Test
     fun `archive removes items from state and calls repository`() = runTest {
         val page = fake_inbox_page(5)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.archive(any()) } returns Result.success(BulkScopeResponse(affected_count =2))
+        coEvery { repository.archive(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -333,14 +370,15 @@ class MailViewModelTest {
         val remaining = vm.inbox_state.value.items
         assertEquals(3, remaining.size)
         assertTrue(remaining.none { it.id == "id_2" || it.id == "id_4" })
-        coVerify { repository.archive(listOf("id_2", "id_4")) }
+        clear_dispatcher_records()
+        coVerify { repository.archive(eq(listOf("id_2", "id_4")), any()) }
     }
 
     @Test
     fun `trash removes items from state and calls repository`() = runTest {
         val page = fake_inbox_page(4)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.trash(any()) } returns Result.success(BulkScopeResponse(affected_count =1))
+        coEvery { repository.trash(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -350,14 +388,15 @@ class MailViewModelTest {
 
         assertEquals(3, vm.inbox_state.value.items.size)
         assertTrue(vm.inbox_state.value.items.none { it.id == "id_3" })
-        coVerify { repository.trash(listOf("id_3")) }
+        clear_dispatcher_records()
+        coVerify { repository.trash(eq(listOf("id_3")), any()) }
     }
 
     @Test
     fun `mark_spam removes items from state and calls repository`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.mark_spam(any()) } returns Result.success(BulkScopeResponse(affected_count =1))
+        coEvery { repository.mark_spam(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -367,7 +406,8 @@ class MailViewModelTest {
 
         assertEquals(2, vm.inbox_state.value.items.size)
         assertTrue(vm.inbox_state.value.items.none { it.id == "id_1" })
-        coVerify { repository.mark_spam(listOf("id_1")) }
+        clear_dispatcher_records()
+        coVerify { repository.mark_spam(eq(listOf("id_1")), any()) }
     }
 
     @Test
@@ -384,6 +424,7 @@ class MailViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.inbox_state.value.items.filter { it.id in unread_ids }.all { it.is_read })
+        clear_dispatcher_records()
         coVerify { repository.mark_read_bulk(unread_ids) }
     }
 
@@ -399,14 +440,15 @@ class MailViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.inbox_state.value.items.size)
-        coVerify { repository.archive(emptyList()) }
+        io.mockk.unmockkStatic(Dispatchers::class)
+        coVerify(exactly = 0) { repository.archive(any(), any()) }
     }
 
     @Test
     fun `trash all items results in empty list`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.trash(any()) } returns Result.success(BulkScopeResponse(affected_count =3))
+        coEvery { repository.trash(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -474,6 +516,7 @@ class MailViewModelTest {
         vm.build_search_index()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_all_for_search(any()) }
     }
 
@@ -832,6 +875,7 @@ class MailViewModelTest {
 
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), any(), any(), any()) }
     }
 
@@ -847,6 +891,7 @@ class MailViewModelTest {
         vm.load_inbox()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), any(), any(), any()) }
     }
 
@@ -907,7 +952,7 @@ class MailViewModelTest {
     fun `archive with nonexistent ids does not remove existing items`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.archive(any()) } returns Result.success(BulkScopeResponse(affected_count = 0))
+        coEvery { repository.archive(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -922,7 +967,7 @@ class MailViewModelTest {
     fun `trash with nonexistent ids does not remove existing items`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.trash(any()) } returns Result.success(BulkScopeResponse(affected_count = 0))
+        coEvery { repository.trash(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -937,7 +982,7 @@ class MailViewModelTest {
     fun `mark_spam with nonexistent ids does not remove existing items`() = runTest {
         val page = fake_inbox_page(3)
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns Result.success(page)
-        coEvery { repository.mark_spam(any()) } returns Result.success(BulkScopeResponse(affected_count = 0))
+        coEvery { repository.mark_spam(any(), any()) } returns Result.success(Unit)
 
         vm.load_inbox()
         advanceUntilIdle()
@@ -955,7 +1000,7 @@ class MailViewModelTest {
 
         vm.load_inbox(force = true)
         advanceUntilIdle()
-        assertEquals("first failure", vm.inbox_state.value.error)
+        assertEquals("Something went wrong", vm.inbox_state.value.error)
 
         coEvery { repository.fetch_inbox(any(), any(), any(), any()) } returns
             Result.success(fake_inbox_page(2))
@@ -1040,6 +1085,7 @@ class MailViewModelTest {
         vm.load_more()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_inbox(any(), any(), any(), any()) }
     }
 
@@ -1054,6 +1100,7 @@ class MailViewModelTest {
         vm.build_search_index()
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.fetch_all_for_search(any()) }
     }
 
@@ -1086,7 +1133,8 @@ class MailViewModelTest {
         vm.mark_read_bulk(emptyList())
         advanceUntilIdle()
 
-        coVerify { repository.mark_read_bulk(emptyList()) }
+        io.mockk.unmockkStatic(Dispatchers::class)
+        coVerify(exactly = 0) { repository.mark_read_bulk(any()) }
     }
 
     @Test

@@ -24,10 +24,12 @@ package org.astermail.android.api.keys
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.header
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLPathPart
 import kotlinx.serialization.Serializable
 import org.astermail.android.api.ApiClient
 
@@ -59,8 +61,9 @@ class KeysApiImpl(private val client: ApiClient) : KeysApi {
     private val base = "/api/crypto/v1/keys"
 
     override suspend fun get_recipient_public_key(username: String, email: String?): PublicKeyResponse {
-        val suffix = if (email != null) "?email=$email" else ""
-        val response = client.http.get("${client.base_url}$base/public/$username$suffix")
+        val response = client.http.get("${client.base_url}$base/public/${username.encodeURLPathPart()}") {
+            if (email != null) parameter("email", email)
+        }
         if (response.status.value !in 200..299) {
             throw client.map_http_status(response.status.value, "")
         }

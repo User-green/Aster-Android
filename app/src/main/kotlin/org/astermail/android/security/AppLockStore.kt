@@ -52,6 +52,7 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
         const val KEY_PIN_DIGITS = "pin_digits"
         const val KEY_LOCKOUT_COUNT = "lockout_count"
         const val KEY_LOCKOUT_UNTIL = "lockout_until_ms"
+        const val KEY_LOCKOUT_UNTIL_ELAPSED = "lockout_until_elapsed_ms"
         const val MAX_ATTEMPTS = 5
         const val BASE_LOCKOUT_MS = 5L * 60 * 1000
         const val MAX_LOCKOUT_MS = 60L * 60 * 1000
@@ -104,11 +105,18 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
         }
     }
 
-    fun is_locked_out(): Boolean = System.currentTimeMillis() < prefs.getLong(KEY_LOCKOUT_UNTIL, 0L)
+    fun is_locked_out(): Boolean = lockout_remaining_ms() > 0L
 
     fun lockout_remaining_seconds(): Long {
-        val remaining = prefs.getLong(KEY_LOCKOUT_UNTIL, 0L) - System.currentTimeMillis()
+        val remaining = lockout_remaining_ms()
         return if (remaining > 0) (remaining + 999) / 1000 else 0L
+    }
+
+    private fun lockout_remaining_ms(): Long {
+        val wall_remaining = prefs.getLong(KEY_LOCKOUT_UNTIL, 0L) - System.currentTimeMillis()
+        val elapsed_remaining = prefs.getLong(KEY_LOCKOUT_UNTIL_ELAPSED, 0L) - android.os.SystemClock.elapsedRealtime()
+        val elapsed_bounded = if (elapsed_remaining in 1..MAX_LOCKOUT_MS) elapsed_remaining else 0L
+        return maxOf(wall_remaining, elapsed_bounded).coerceAtLeast(0L)
     }
 
     fun failed_attempt_count(): Int = prefs.getInt(KEY_LOCKOUT_COUNT, 0)
@@ -123,6 +131,7 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
             if (digits != null) putInt(KEY_PIN_DIGITS, digits) else remove(KEY_PIN_DIGITS)
             putInt(KEY_LOCKOUT_COUNT, 0)
             putLong(KEY_LOCKOUT_UNTIL, 0L)
+            putLong(KEY_LOCKOUT_UNTIL_ELAPSED, 0L)
         }.apply()
         mark_session_unlocked()
     }
@@ -136,7 +145,8 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
         val candidate = hash_pin(pin, salt)
         val ok = constant_time_equals(stored, candidate)
         if (ok) {
-            prefs.edit().putInt(KEY_LOCKOUT_COUNT, 0).putLong(KEY_LOCKOUT_UNTIL, 0L).apply()
+            prefs.edit().putInt(KEY_LOCKOUT_COUNT, 0).putLong(KEY_LOCKOUT_UNTIL, 0L)
+                .putLong(KEY_LOCKOUT_UNTIL_ELAPSED, 0L).apply()
             mark_session_unlocked()
         } else {
             record_failed_attempt()
@@ -152,6 +162,7 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
             remove(KEY_PIN_DIGITS)
             remove(KEY_LOCKOUT_COUNT)
             remove(KEY_LOCKOUT_UNTIL)
+            remove(KEY_LOCKOUT_UNTIL_ELAPSED)
         }.apply()
         session_unlocked = false
         _is_locked.value = false
@@ -164,9 +175,11 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
             minOf(BASE_LOCKOUT_MS shl over, MAX_LOCKOUT_MS)
         } else 0L
         val until = if (lockout_ms > 0) System.currentTimeMillis() + lockout_ms else 0L
+        val until_elapsed = if (lockout_ms > 0) android.os.SystemClock.elapsedRealtime() + lockout_ms else 0L
         prefs.edit()
             .putInt(KEY_LOCKOUT_COUNT, count)
             .putLong(KEY_LOCKOUT_UNTIL, until)
+            .putLong(KEY_LOCKOUT_UNTIL_ELAPSED, until_elapsed)
             .apply()
     }
 

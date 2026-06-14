@@ -23,6 +23,7 @@ package org.astermail.android.contacts
 
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -47,13 +48,23 @@ class ContactsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: ContactsRepository
+    private lateinit var context: android.content.Context
     private lateinit var vm: ContactsViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
         repository = mockk(relaxed = true)
-        vm = ContactsViewModel(repository)
+        context = mockk(relaxed = true)
+        every { context.getString(org.astermail.android.R.string.error_no_connection) } returns
+            "Could not connect to the server. Check your internet connection."
+        every { context.getString(org.astermail.android.R.string.error_timeout) } returns
+            "Connection timed out. Please try again."
+        every { context.getString(org.astermail.android.R.string.error_ssl) } returns
+            "Secure connection failed. Please try again."
+        every { context.getString(org.astermail.android.R.string.something_went_wrong) } returns
+            "Something went wrong"
+        vm = ContactsViewModel(repository, context)
     }
 
     @After
@@ -128,7 +139,7 @@ class ContactsViewModelTest {
 
         val state = vm.state.value
         assertFalse(state.is_loading)
-        assertEquals("network timeout", state.error)
+        assertEquals("Connection timed out. Please try again.", state.error)
         assertTrue(state.contacts.isEmpty())
     }
 
@@ -140,7 +151,7 @@ class ContactsViewModelTest {
         vm.load_contacts()
         advanceUntilIdle()
 
-        assertEquals("failed to load contacts", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -196,7 +207,7 @@ class ContactsViewModelTest {
         vm.load_contact("c_1")
         advanceUntilIdle()
 
-        assertEquals("failed to load contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -261,7 +272,7 @@ class ContactsViewModelTest {
         vm.save_contact(contact)
         advanceUntilIdle()
 
-        assertEquals("failed to save contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -328,7 +339,7 @@ class ContactsViewModelTest {
         vm.delete_contact("c_1")
         advanceUntilIdle()
 
-        assertEquals("failed to delete contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test

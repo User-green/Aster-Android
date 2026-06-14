@@ -108,10 +108,11 @@ object NetworkModule {
 
         override suspend fun refresh(): BearerTokens? {
             return try {
-                val response = auth_api.get().refresh()
-                val existing_refresh = token_store.refresh_token ?: response.access_token
-                token_store.save(response.access_token, existing_refresh)
-                BearerTokens(response.access_token, existing_refresh)
+                val current_refresh = token_store.refresh_token
+                val response = auth_api.get().refresh(current_refresh)
+                val new_refresh = response.refresh_token ?: current_refresh ?: response.access_token
+                token_store.save(response.access_token, new_refresh)
+                BearerTokens(response.access_token, new_refresh)
             } catch (t: Throwable) {
                 val is_definitive_auth_failure = t is org.astermail.android.api.ApiError.UnauthorizedError ||
                     t is org.astermail.android.api.ApiError.ForbiddenError

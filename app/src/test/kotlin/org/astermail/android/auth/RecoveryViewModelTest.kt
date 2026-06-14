@@ -49,12 +49,24 @@ import org.junit.Test
 class RecoveryViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var application: android.app.Application
     private lateinit var recovery_api: RecoveryApi
     private lateinit var vm: RecoveryViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        application = mockk(relaxed = true)
+        every { application.getString(org.astermail.android.R.string.error_password_min_length) } returns
+            "Password must be at least 12 characters"
+        every { application.getString(org.astermail.android.R.string.error_passwords_no_match) } returns
+            "Passwords do not match"
+        every { application.getString(org.astermail.android.R.string.error_invalid_recovery_code) } returns
+            "Invalid recovery code format"
+        every { application.getString(org.astermail.android.R.string.error_send_recovery) } returns
+            "failed to send recovery email"
+        every { application.getString(org.astermail.android.R.string.error_invalid_code) } returns
+            "invalid recovery code"
         recovery_api = mockk(relaxed = true)
         mockkStatic(Base64::class)
         every { Base64.encodeToString(any(), any()) } answers {
@@ -63,7 +75,7 @@ class RecoveryViewModelTest {
         every { Base64.decode(any<String>(), any()) } answers {
             java.util.Base64.getDecoder().decode(firstArg<String>())
         }
-        vm = RecoveryViewModel(recovery_api)
+        vm = RecoveryViewModel(application, recovery_api)
     }
 
     @After

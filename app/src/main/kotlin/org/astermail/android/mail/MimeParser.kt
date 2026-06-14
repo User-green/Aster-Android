@@ -142,11 +142,29 @@ object MimeParser {
     }
 
     private fun decode_quoted_printable(input: String): String {
-        return input
-            .replace(Regex("=\\r?\\n"), "")
-            .replace(Regex("=([0-9A-Fa-f]{2})")) { match ->
-                match.groupValues[1].toInt(16).toChar().toString()
+        val joined = input.replace(Regex("=\\r?\\n"), "")
+        val out = java.io.ByteArrayOutputStream(joined.length)
+        val literal = StringBuilder()
+        var i = 0
+        while (i < joined.length) {
+            val ch = joined[i]
+            if (ch == '=' && i + 2 < joined.length) {
+                val n = joined.substring(i + 1, i + 3).toIntOrNull(16)
+                if (n != null) {
+                    if (literal.isNotEmpty()) {
+                        out.write(literal.toString().toByteArray(Charsets.UTF_8))
+                        literal.setLength(0)
+                    }
+                    out.write(n)
+                    i += 3
+                    continue
+                }
             }
+            literal.append(ch)
+            i++
+        }
+        if (literal.isNotEmpty()) out.write(literal.toString().toByteArray(Charsets.UTF_8))
+        return String(out.toByteArray(), Charsets.UTF_8)
     }
 
     private fun decode_base64(input: String): String {

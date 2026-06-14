@@ -379,7 +379,7 @@ class MailRepository @Inject constructor(
         val response = mail_api.get_thread_messages(thread_token)
         coroutineScope {
             response.messages.map { msg ->
-                async(Dispatchers.Default) { decrypt_thread_message(msg) }
+                async(Dispatchers.IO) { decrypt_thread_message(msg) }
             }.awaitAll()
         }
     }
@@ -558,7 +558,7 @@ class MailRepository @Inject constructor(
     private suspend fun decrypt_items_parallel(items: List<MailItem>): List<InboxItem> =
         coroutineScope {
             items.map { item ->
-                async(Dispatchers.Default) { decrypt_inbox_item(item) }
+                async(Dispatchers.IO) { decrypt_inbox_item(item) }
             }.awaitAll()
         }
 

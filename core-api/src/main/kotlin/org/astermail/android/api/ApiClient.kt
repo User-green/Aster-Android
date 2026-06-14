@@ -109,6 +109,8 @@ class ApiClient(
     @Volatile
     private var csrf_token: String? = initial_csrf
 
+    private val api_host: String? = runCatching { io.ktor.http.Url(base_url).host }.getOrNull()
+
     val http: HttpClient = HttpClient(OkHttp) {
         engine {
             config {
@@ -122,7 +124,8 @@ class ApiClient(
                     chain.proceed(original)
                 } else {
                     val token = csrf_token
-                    if (token.isNullOrEmpty()) {
+                    val same_host = api_host == null || original.url.host == api_host
+                    if (token.isNullOrEmpty() || !same_host) {
                         chain.proceed(original)
                     } else {
                         val existing_cookie = original.header("Cookie")
@@ -158,8 +161,10 @@ class ApiClient(
                     val is_public = path.endsWith("/auth/login") ||
                         path.endsWith("/auth/register") ||
                         path.endsWith("/auth/salt") ||
+                        path.endsWith("/auth/refresh") ||
                         path.contains("/recovery/")
-                    !is_public
+                    val same_host = api_host == null || request.url.host == api_host
+                    !is_public && same_host
                 }
             }
         }
@@ -208,8 +213,15 @@ class ApiClient(
     }
 
     fun set_csrf(token: String?) {
-        csrf_token = token
-        runCatching { on_csrf_changed(token) }
+        val safe = sanitize_csrf(token)
+        csrf_token = safe
+        runCatching { on_csrf_changed(safe) }
+    }
+
+    private fun sanitize_csrf(token: String?): String? {
+        if (token.isNullOrEmpty()) return null
+        val ok = token.all { it.code in 0x21..0x7e && it != ';' && it != ',' }
+        return if (ok) token else null
     }
 
     fun invalidate_bearer_cache() {
@@ -233,7 +245,7 @@ class ApiClient(
         return try {
             val element = json.parseToJsonElement(body)
             val obj = element as? JsonObject ?: return null
-            (obj["csrf_token"] ?: obj["token"])?.jsonPrimitive?.content
+            sanitize_csrf((obj["csrf_token"] ?: obj["token"])?.jsonPrimitive?.content)
         } catch (_: SerializationException) {
             null
         } catch (_: Throwable) {

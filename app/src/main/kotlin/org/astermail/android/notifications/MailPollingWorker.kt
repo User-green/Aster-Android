@@ -88,10 +88,11 @@ class MailPollingWorker(
             }
             override suspend fun refresh(): BearerTokens? {
                 return try {
-                    val response = AuthApiImpl(client).refresh()
-                    val existing_refresh = token_store.refresh_token ?: response.access_token
-                    token_store.save(response.access_token, existing_refresh)
-                    BearerTokens(response.access_token, existing_refresh)
+                    val current_refresh = token_store.refresh_token
+                    val response = AuthApiImpl(client).refresh(current_refresh)
+                    val new_refresh = response.refresh_token ?: current_refresh ?: response.access_token
+                    token_store.save(response.access_token, new_refresh)
+                    BearerTokens(response.access_token, new_refresh)
                 } catch (t: Throwable) {
                     val is_definitive_auth_failure = t is ApiError.UnauthorizedError ||
                         t is ApiError.ForbiddenError
@@ -147,18 +148,20 @@ class MailPollingWorker(
     }
 
     private suspend fun notify_for_new_mail(arrived: Int) {
-        if (org.astermail.android.security.LockdownStore.is_enabled(context)) {
-            show_generic(context, arrived)
-            return
-        }
-        val repo = try {
+        val entry = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 MailRepositoryEntryPoint::class.java,
-            ).mail_repository()
+            )
         } catch (_: Throwable) {
             null
         }
+        val app_lock_configured = runCatching { entry?.app_lock_store()?.is_configured() }.getOrNull() == true
+        if (org.astermail.android.security.LockdownStore.is_enabled(context) || app_lock_configured) {
+            show_generic(context, arrived)
+            return
+        }
+        val repo = entry?.mail_repository()
         if (repo == null) {
             show_generic(context, arrived)
             return
@@ -190,6 +193,7 @@ class MailPollingWorker(
     @InstallIn(SingletonComponent::class)
     interface MailRepositoryEntryPoint {
         fun mail_repository(): MailRepository
+        fun app_lock_store(): org.astermail.android.security.AppLockStore
     }
 
     companion object {
@@ -335,7 +339,6 @@ class MailPollingWorker(
             } else {
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_CHAIN)
-                FcmTokenManager.unregister(context)
             }
         }
 
@@ -364,30 +367,33 @@ class MailPollingWorker(
         ) {
             if (!can_post(context)) return
             val private_mode = is_private_notifications(context)
+            val one_line_subject = subject.replace(Regex("\\s+"), " ").trim()
+                .ifBlank { context.getString(R.string.notif_new_message) }
+            val one_line_preview = preview.replace(Regex("\\s+"), " ").trim()
             val builder = base_builder(context)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .setGroup(GROUP_KEY_NEW_MAIL)
+                .setContentTitle(sender)
+                .setContentText(one_line_subject)
+            if (one_line_preview.isNotBlank()) {
+                builder.setStyle(
+                    NotificationCompat.InboxStyle()
+                        .addLine(one_line_subject)
+                        .addLine(one_line_preview),
+                )
+            }
             if (private_mode) {
-                builder
-                    .setContentTitle(sender)
-                    .setContentText(context.getString(R.string.notif_new_message))
-                    .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                builder.setPublicVersion(
+                    base_builder(context)
+                        .setContentTitle(context.getString(R.string.app_name))
+                        .setContentText(context.getString(R.string.notif_new_message))
+                        .setGroup(GROUP_KEY_NEW_MAIL)
+                        .build(),
+                )
             } else {
-                val one_line_subject = subject.replace(Regex("\\s+"), " ").trim()
-                    .ifBlank { context.getString(R.string.notif_new_message) }
-                val one_line_preview = preview.replace(Regex("\\s+"), " ").trim()
-                builder
-                    .setContentTitle(sender)
-                    .setContentText(one_line_subject)
-                    .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-                if (one_line_preview.isNotBlank()) {
-                    builder.setStyle(
-                        NotificationCompat.InboxStyle()
-                            .addLine(one_line_subject)
-                            .addLine(one_line_preview),
-                    )
-                }
+                builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             }
             val manager = NotificationManagerCompat.from(context)
             manager.notify(message_id, builder.build())

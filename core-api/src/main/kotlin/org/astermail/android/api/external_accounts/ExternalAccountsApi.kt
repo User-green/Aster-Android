@@ -50,6 +50,8 @@ data class ExternalAccount(
     val is_verified: Boolean = false,
     val last_sync_at: String? = null,
     val last_sync_status: String? = null,
+    val last_sync_error: String? = null,
+    val needs_reauth: Boolean = false,
     val email_count: Int = 0,
     val oauth_provider: String? = null,
     val oauth_email: String? = null,

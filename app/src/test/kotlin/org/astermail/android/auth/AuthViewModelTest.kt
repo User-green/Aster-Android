@@ -45,6 +45,7 @@ import org.junit.Test
 class AuthViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var application: android.app.Application
     private lateinit var repository: AuthRepository
     private lateinit var vm: AuthViewModel
 
@@ -53,15 +54,58 @@ class AuthViewModelTest {
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        io.mockk.mockkStatic(Dispatchers::class)
+        io.mockk.every { Dispatchers.IO } returns dispatcher
+        application = mockk(relaxed = true)
+        stub_error_strings(application)
         repository = mockk(relaxed = true) {
             io.mockk.every { is_signed_in } returns fake_signed_in
         }
-        vm = AuthViewModel(repository)
+        vm = AuthViewModel(application, repository)
     }
 
     @After
     fun teardown() {
+        io.mockk.unmockkStatic(Dispatchers::class)
         Dispatchers.resetMain()
+    }
+
+    private fun clear_dispatcher_records() {
+        io.mockk.clearStaticMockk(
+            Dispatchers::class,
+            answers = false,
+            recordedCalls = true,
+            childMocks = false,
+        )
+    }
+
+    private fun stub_error_strings(app: android.app.Application) {
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_invalid_email) } returns
+            "enter a valid email"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_password_min_length) } returns
+            "password must be at least 12 characters"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_passwords_no_match) } returns
+            "passwords do not match"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_invalid_credentials) } returns
+            "Invalid username or password"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_captcha_failed) } returns
+            "Captcha verification failed. Please try again."
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_access_denied) } returns
+            "Access denied"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_account_not_found) } returns
+            "Account not found"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_no_connection) } returns
+            "Could not connect to the server. Check your internet connection."
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_server) } returns
+            "Server error. Please try again later."
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_invalid_request) } returns
+            "Invalid request"
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_timeout) } returns
+            "Connection timed out. Please try again."
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_ssl) } returns
+            "Secure connection failed. Please try again."
+        io.mockk.every { app.getString(org.astermail.android.R.string.error_generic) } returns
+            "Something went wrong. Please try again."
     }
 
     @Test
@@ -72,7 +116,7 @@ class AuthViewModelTest {
 
     @Test
     fun `submit_login transitions to loading then success`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "password123!")
         assertEquals(AuthUiState.Loading, vm.ui_state.value)
@@ -85,7 +129,7 @@ class AuthViewModelTest {
 
     @Test
     fun `submit_login with captcha token passes it through`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "pass", "captcha_abc")
         advanceUntilIdle()
@@ -265,7 +309,7 @@ class AuthViewModelTest {
     fun `submit_login ignores duplicate call while loading`() = runTest {
         coEvery { repository.login(any(), any(), any()) } coAnswers {
             kotlinx.coroutines.delay(5000)
-            Result.success(Unit)
+            Result.success(LoginOutcome.Success)
         }
 
         vm.submit_login("user@astermail.org", "pass")
@@ -275,6 +319,7 @@ class AuthViewModelTest {
 
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.login(any(), any(), any()) }
     }
 
@@ -312,6 +357,7 @@ class AuthViewModelTest {
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
         assertEquals("enter a valid email", (state as AuthUiState.Error).message)
+        io.mockk.unmockkStatic(Dispatchers::class)
         coVerify(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
@@ -349,6 +395,7 @@ class AuthViewModelTest {
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
         assertEquals("password must be at least 12 characters", (state as AuthUiState.Error).message)
+        io.mockk.unmockkStatic(Dispatchers::class)
         coVerify(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
@@ -371,6 +418,7 @@ class AuthViewModelTest {
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
         assertEquals("passwords do not match", (state as AuthUiState.Error).message)
+        io.mockk.unmockkStatic(Dispatchers::class)
         coVerify(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
@@ -400,6 +448,7 @@ class AuthViewModelTest {
         vm.submit_register("test@astermail.org", "password12345!", "password12345!")
         advanceUntilIdle()
 
+        clear_dispatcher_records()
         coVerify(exactly = 1) { repository.register(any(), any(), any()) }
     }
 
@@ -432,7 +481,7 @@ class AuthViewModelTest {
 
     @Test
     fun `reset_state returns to idle`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "pass")
         advanceUntilIdle()

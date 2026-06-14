@@ -26,6 +26,7 @@ import android.util.Base64
 object MimeExtractor {
 
     private const val MAX_ATTACHMENT_BYTES = 50 * 1024 * 1024
+    private const val MAX_MULTIPART_DEPTH = 10
 
     private val content_type_pattern = Regex("(?im)^content-type\\s*:")
     private val boundary_pattern = Regex("(?i)boundary=\"?([^\\s\";]+)\"?")
@@ -130,7 +131,9 @@ object MimeExtractor {
         body: String,
         boundary: String,
         prefer_html: Boolean,
+        depth: Int = 0,
     ): MimeBody? {
+        if (depth > MAX_MULTIPART_DEPTH) return null
         val parts = body.split("--$boundary")
         var plain: MimeBody? = null
         var html: MimeBody? = null
@@ -150,7 +153,7 @@ object MimeExtractor {
                         lower.contains("multipart/mixed")
                     )
             ) {
-                val r = extract_from_multipart(payload, nested, prefer_html)
+                val r = extract_from_multipart(payload, nested, prefer_html, depth + 1)
                 if (r != null) return r
                 continue
             }

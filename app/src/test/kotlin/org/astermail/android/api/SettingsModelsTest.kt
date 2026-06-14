@@ -49,10 +49,7 @@ class SettingsModelsTest {
     fun `SessionInfo defaults`() {
         val session = SessionInfo(id = "s1")
         assertEquals("s1", session.id)
-        assertNull(session.ip_address)
-        assertNull(session.user_agent)
         assertNull(session.created_at)
-        assertNull(session.last_active_at)
         assertFalse(session.is_current)
     }
 
@@ -60,25 +57,19 @@ class SettingsModelsTest {
     fun `SessionInfo with all fields`() {
         val session = SessionInfo(
             id = "s1",
-            ip_address = "192.168.1.1",
-            user_agent = "Mozilla/5.0",
             created_at = "2026-04-01T00:00:00Z",
-            last_active_at = "2026-04-26T10:00:00Z",
             is_current = true,
         )
-        assertEquals("192.168.1.1", session.ip_address)
-        assertEquals("Mozilla/5.0", session.user_agent)
         assertEquals("2026-04-01T00:00:00Z", session.created_at)
-        assertEquals("2026-04-26T10:00:00Z", session.last_active_at)
         assertTrue(session.is_current)
     }
 
     @Test
     fun `SessionInfo copy`() {
         val original = SessionInfo(id = "s1", is_current = false)
-        val copied = original.copy(is_current = true, ip_address = "10.0.0.1")
+        val copied = original.copy(is_current = true, created_at = "10.0.0.1")
         assertTrue(copied.is_current)
-        assertEquals("10.0.0.1", copied.ip_address)
+        assertEquals("10.0.0.1", copied.created_at)
         assertEquals("s1", copied.id)
     }
 

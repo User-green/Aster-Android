@@ -48,7 +48,7 @@ class LabelsModelsTest {
         assertNull(label.icon_nonce)
         assertFalse(label.is_system)
         assertFalse(label.is_locked)
-        assertEquals("custom", label.folder_type)
+        assertEquals("folder", label.folder_type)
         assertEquals(0, label.sort_order)
         assertNull(label.parent_token)
         assertNull(label.item_count)

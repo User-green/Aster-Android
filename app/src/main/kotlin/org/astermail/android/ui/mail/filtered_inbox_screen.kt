@@ -84,14 +84,25 @@ fun FilteredInboxScreen(
         mail_vm.load_inbox(requested_folder, force = true)
     }
 
-    LaunchedEffect(list_state) {
+    LaunchedEffect(list_state, requested_folder) {
         snapshotFlow {
             val layout_info = list_state.layoutInfo
             val total = layout_info.totalItemsCount
             val last_visible = layout_info.visibleItemsInfo.lastOrNull()?.index ?: 0
             total > 0 && (total - last_visible) <= 3
         }.distinctUntilChanged().collect { near_end ->
-            if (near_end) mail_vm.load_more()
+            val s = inbox_state
+            if (near_end &&
+                s.has_more &&
+                !s.is_loading &&
+                !s.is_loading_more &&
+                !s.initial &&
+                s.items.isNotEmpty() &&
+                s.next_cursor != null &&
+                s.current_folder == requested_folder
+            ) {
+                mail_vm.load_more()
+            }
         }
     }
 

@@ -39,4 +39,20 @@ object LockdownStore {
             .putBoolean(KEY_ENABLED, enabled)
             .apply()
     }
+
+    fun register_listener(
+        context: Context,
+        listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
+    ) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .registerOnSharedPreferenceChangeListener(listener)
+    }
+
+    fun unregister_listener(
+        context: Context,
+        listener: android.content.SharedPreferences.OnSharedPreferenceChangeListener,
+    ) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .unregisterOnSharedPreferenceChangeListener(listener)
+    }
 }

@@ -89,40 +89,87 @@ class SettingsViewModelTest {
     private lateinit var labels_api: LabelsApi
     private lateinit var tags_api: TagsApi
     private lateinit var preferences_api: PreferencesApi
+    private lateinit var signatures_api: org.astermail.android.api.signatures.SignaturesApi
     private lateinit var ghost_alias_api: GhostAliasApi
     private lateinit var auto_forward_api: AutoForwardApi
     private lateinit var developer_api: DeveloperApi
     private lateinit var subscriptions_api: SubscriptionsApi
+    private lateinit var recovery_email_api: org.astermail.android.api.recovery_email.RecoveryEmailApi
+    private lateinit var security_api: org.astermail.android.api.security.SecurityApi
+    private lateinit var encryption_api: org.astermail.android.api.encryption.EncryptionApi
     private lateinit var auth_repository: AuthRepository
     private lateinit var session_key_store: SessionKeyStore
     private lateinit var token_store: TokenStore
+    private lateinit var account_store: org.astermail.android.storage.AccountStore
+    private lateinit var context: android.content.Context
     private lateinit var vm: SettingsViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        io.mockk.mockkStatic(android.util.Base64::class)
+        every { android.util.Base64.encodeToString(any(), any()) } answers {
+            java.util.Base64.getEncoder().encodeToString(firstArg())
+        }
+        every { android.util.Base64.decode(any<String>(), any()) } answers {
+            java.util.Base64.getDecoder().decode(firstArg<String>())
+        }
+        io.mockk.mockkStatic(android.util.Log::class)
+        every { android.util.Log.i(any(), any()) } returns 0
+        every { android.util.Log.w(any(), any<String>()) } returns 0
+        every { android.util.Log.w(any(), any<String>(), any()) } returns 0
+        every { android.util.Log.w(any(), any<Throwable>()) } returns 0
+        every { android.util.Log.e(any(), any()) } returns 0
+        every { android.util.Log.e(any(), any(), any()) } returns 0
+        every { android.util.Log.d(any(), any()) } returns 0
         auth_api = mockk(relaxed = true)
         user_api = mockk(relaxed = true)
         settings_api = mockk(relaxed = true)
         labels_api = mockk(relaxed = true)
         tags_api = mockk(relaxed = true)
         preferences_api = mockk(relaxed = true)
+        signatures_api = mockk(relaxed = true)
         ghost_alias_api = mockk(relaxed = true)
         auto_forward_api = mockk(relaxed = true)
         developer_api = mockk(relaxed = true)
         subscriptions_api = mockk(relaxed = true)
+        recovery_email_api = mockk(relaxed = true)
+        security_api = mockk(relaxed = true)
+        encryption_api = mockk(relaxed = true)
         auth_repository = mockk(relaxed = true)
         session_key_store = mockk(relaxed = true)
         token_store = mockk(relaxed = true)
+        account_store = mockk(relaxed = true)
+        context = mockk(relaxed = true)
+        every { context.getString(org.astermail.android.R.string.something_went_wrong) } returns
+            "Something went wrong"
         vm = SettingsViewModel(
-            auth_api, user_api, settings_api, labels_api, tags_api, preferences_api,
-            ghost_alias_api, auto_forward_api, developer_api, subscriptions_api,
-            auth_repository, session_key_store, token_store,
+            auth_api = auth_api,
+            user_api = user_api,
+            settings_api = settings_api,
+            labels_api = labels_api,
+            tags_api = tags_api,
+            preferences_api = preferences_api,
+            signatures_api = signatures_api,
+            ghost_alias_api = ghost_alias_api,
+            auto_forward_api = auto_forward_api,
+            developer_api = developer_api,
+            subscriptions_api = subscriptions_api,
+            recovery_email_api = recovery_email_api,
+            security_api = security_api,
+            encryption_api = encryption_api,
+            auth_repository = auth_repository,
+            session_key_store = session_key_store,
+            token_store = token_store,
+            account_store = account_store,
+            context = context,
         )
     }
 
     @After
     fun teardown() {
+        io.mockk.unmockkStatic(android.util.Log::class)
+        io.mockk.unmockkStatic(android.util.Base64::class)
         Dispatchers.resetMain()
     }
 
@@ -199,8 +246,8 @@ class SettingsViewModelTest {
     @Test
     fun `load_sessions populates sessions list`() = runTest {
         val sessions = listOf(
-            SessionInfo(id = "s1", ip_address = "1.2.3.4", is_current = true),
-            SessionInfo(id = "s2", ip_address = "5.6.7.8", is_current = false),
+            SessionInfo(id = "s1", is_current = true),
+            SessionInfo(id = "s2", is_current = false),
         )
         coEvery { settings_api.list_sessions() } returns SessionListResponse(sessions)
 
@@ -223,6 +270,10 @@ class SettingsViewModelTest {
         vm.load_sessions()
         advanceUntilIdle()
         assertEquals(3, vm.state.value.sessions.size)
+
+        coEvery { settings_api.list_sessions() } returns SessionListResponse(
+            sessions.filter { it.id != "s2" },
+        )
 
         vm.revoke_session("s2")
         advanceUntilIdle()
@@ -1142,7 +1193,7 @@ class SettingsViewModelTest {
 
         assertFalse(vm.state.value.is_loading)
         assertEquals("prefs error", vm.state.value.error)
-        assertNull(vm.state.value.preferences)
+        assertNotNull(vm.state.value.preferences)
     }
 
     @Test
@@ -1263,7 +1314,7 @@ class SettingsViewModelTest {
         vm.load_referral_info()
         advanceUntilIdle()
 
-        assertNull(vm.state.value.referral)
+        assertEquals(ReferralInfoResponse(), vm.state.value.referral)
         assertNull(vm.state.value.error)
     }
 
@@ -1369,7 +1420,7 @@ class SettingsViewModelTest {
         vm.load_profile()
         advanceUntilIdle()
 
-        assertEquals("failed to load profile", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -1379,7 +1430,7 @@ class SettingsViewModelTest {
         vm.update_display_name("name")
         advanceUntilIdle()
 
-        assertEquals("failed to update name", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test

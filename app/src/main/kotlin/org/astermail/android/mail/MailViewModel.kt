@@ -375,6 +375,12 @@ class MailViewModel @Inject constructor(
             }
             result.fold(
                 onSuccess = { page ->
+                    if (BuildConfig.DEBUG && (folder.startsWith("label:") || folder.startsWith("tag:"))) {
+                        android.util.Log.d(
+                            "MailVM",
+                            "label_load folder=$folder api_items=${page.items.size} archived_in_api=${page.items.count { it.is_archived }} total=${page.total}",
+                        )
+                    }
                     val previous = _inbox_state.value.items
                     val combined = merge_with_previous(page.items, previous, folder, page.total)
                     val merged_items = apply_demo_overlay(
@@ -804,9 +810,23 @@ class MailViewModel @Inject constructor(
 
     fun apply_label(item_id: String, label_token: String, display_name: String) {
         if (item_id == DEMO_PHISH_ITEM_ID) return
+        _inbox_state.value = _inbox_state.value.copy(
+            items = _inbox_state.value.items.map {
+                if (it.id == item_id) it.copy(labels = (it.labels + label_token).distinct()) else it
+            },
+        )
+        val thread = _thread_state.value
+        if (thread.item?.id == item_id) {
+            _thread_state.value = thread.copy(
+                item = thread.item.copy(labels = (thread.item.labels + label_token).distinct()),
+            )
+        }
         viewModelScope.launch {
             repository.add_label_to_item(item_id, label_token).fold(
-                onSuccess = { emit_toast(context.getString(R.string.added_to_label, display_name)) },
+                onSuccess = {
+                    invalidate_caches(listOf("label:$label_token"))
+                    emit_toast(context.getString(R.string.added_to_label, display_name))
+                },
                 onFailure = { emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label)) },
             )
         }
@@ -877,7 +897,9 @@ class MailViewModel @Inject constructor(
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
-        invalidate_caches(listOf("archive", "inbox"))
+        val affected_label_caches = removed_items.flatMap { it.labels }.map { "label:$it" }
+        val affected_tag_caches = removed_items.flatMap { it.tag_tokens }.map { "tag:$it" }
+        invalidate_caches(listOf("archive", "inbox", "all") + affected_label_caches + affected_tag_caches)
         viewModelScope.launch {
             try {
                 repository.archive(item_ids, raw_items).fold(

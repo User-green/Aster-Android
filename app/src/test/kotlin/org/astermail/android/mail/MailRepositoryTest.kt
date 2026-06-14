@@ -55,7 +55,13 @@ class MailRepositoryTest {
 
     private lateinit var mail_api: MailApi
     private lateinit var send_api: SendApi
+    private lateinit var snooze_api: org.astermail.android.api.snooze.SnoozeApi
+    private lateinit var labels_api: org.astermail.android.api.labels.LabelsApi
     private lateinit var session_key_store: SessionKeyStore
+    private lateinit var scheduled_api: org.astermail.android.api.scheduled.ScheduledApi
+    private lateinit var ratchet_decryptor: org.astermail.android.mail.ratchet.RatchetDecryptor
+    private lateinit var ratchet_encryptor: org.astermail.android.mail.ratchet.RatchetEncryptor
+    private lateinit var context: android.content.Context
     private lateinit var repo: MailRepository
 
     @Before
@@ -69,10 +75,26 @@ class MailRepositoryTest {
         }
         mail_api = mockk(relaxed = true)
         send_api = mockk(relaxed = true)
+        snooze_api = mockk(relaxed = true)
+        labels_api = mockk(relaxed = true)
         session_key_store = mockk(relaxed = true)
+        scheduled_api = mockk(relaxed = true)
+        ratchet_decryptor = mockk(relaxed = true)
+        ratchet_encryptor = mockk(relaxed = true)
+        context = mockk(relaxed = true)
         every { session_key_store.get_identity_key() } returns null
         every { session_key_store.get_passphrase() } returns null
-        repo = MailRepository(mail_api, send_api, session_key_store)
+        repo = MailRepository(
+            mail_api = mail_api,
+            send_api = send_api,
+            snooze_api = snooze_api,
+            labels_api = labels_api,
+            session_key_store = session_key_store,
+            scheduled_api = scheduled_api,
+            ratchet_decryptor = ratchet_decryptor,
+            ratchet_encryptor = ratchet_encryptor,
+            context = context,
+        )
     }
 
     @After
@@ -99,7 +121,7 @@ class MailRepositoryTest {
     @Test
     fun `fetch_inbox returns decrypted inbox page`() = runTest {
         val items = listOf(fake_mail_item("i1"), fake_mail_item("i2"))
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = items, has_more = false, next_cursor = null, total = 2)
 
         val result = repo.fetch_inbox()
@@ -114,7 +136,7 @@ class MailRepositoryTest {
     @Test
     fun `fetch_inbox with null envelope yields empty sender`() = runTest {
         val items = listOf(fake_mail_item("i1", encrypted_envelope = null))
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = items, has_more = false, next_cursor = null, total = 1)
 
         val result = repo.fetch_inbox()
@@ -127,7 +149,7 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_inbox propagates api errors`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } throws
             RuntimeException("api down")
 
         val result = repo.fetch_inbox()
@@ -137,56 +159,56 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_sent delegates to list_messages with sent type`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), item_type = eq("sent"), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), item_type = eq("sent"), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_sent()
-        coVerify { mail_api.list_messages(any(), any(), item_type = "sent", any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), item_type = "sent", any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_drafts delegates with draft type`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), item_type = eq("draft"), any(), any(), any(), any(), any(), any()) } returns
-            MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
+        coEvery { mail_api.list_drafts(any(), any()) } returns
+            org.astermail.android.api.mail.DraftsListResponse(items = emptyList(), next_cursor = null, has_more = false)
 
         repo.fetch_drafts()
-        coVerify { mail_api.list_messages(any(), any(), item_type = "draft", any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_drafts(any(), any()) }
     }
 
     @Test
     fun `fetch_starred passes is_starred flag`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), is_starred = eq(true), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), is_starred = eq(true), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_starred()
-        coVerify { mail_api.list_messages(any(), any(), any(), is_starred = true, any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), any(), is_starred = true, any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_trash passes is_trashed flag`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), is_trashed = eq(true), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), is_trashed = eq(true), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_trash()
-        coVerify { mail_api.list_messages(any(), any(), any(), any(), is_trashed = true, any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), any(), any(), is_trashed = true, any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_spam passes is_spam flag`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = eq(true), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = eq(true), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_spam()
-        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = true, any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = true, any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_archive passes is_archived flag`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = eq(true), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = eq(true), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_archive()
-        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = true, any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = true, any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -213,7 +235,6 @@ class MailRepositoryTest {
 
         val result = repo.archive(listOf("a", "b", "c"))
         assertTrue(result.isSuccess)
-        assertEquals(3, result.getOrThrow().affected_count)
         coVerify { mail_api.bulk_action(BulkScopeRequest(action = "archive", ids = listOf("a", "b", "c"))) }
     }
 
@@ -267,11 +288,11 @@ class MailRepositoryTest {
         val page2_items = (1..10).map { fake_mail_item("page2_$it") }
 
         coEvery {
-            mail_api.list_messages(limit = 50, cursor = isNull(), any(), any(), any(), any(), any(), any(), any())
+            mail_api.list_messages(limit = 50, cursor = isNull(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns MailItemsListResponse(page1_items, has_more = true, next_cursor = "c1", total = 60)
 
         coEvery {
-            mail_api.list_messages(limit = 50, cursor = eq("c1"), any(), any(), any(), any(), any(), any(), any())
+            mail_api.list_messages(limit = 50, cursor = eq("c1"), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns MailItemsListResponse(page2_items, has_more = false, next_cursor = null, total = 60)
 
         val result = repo.fetch_all_for_search()
@@ -281,9 +302,14 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_all_for_search stops at max_pages`() = runTest {
-        val page_items = (1..50).map { fake_mail_item("p_$it") }
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
-            MailItemsListResponse(page_items, has_more = true, next_cursor = "next", total = 1000)
+        val page1_items = (1..50).map { fake_mail_item("p1_$it") }
+        val page2_items = (1..50).map { fake_mail_item("p2_$it") }
+        coEvery {
+            mail_api.list_messages(any(), cursor = isNull(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns MailItemsListResponse(page1_items, has_more = true, next_cursor = "next", total = 1000)
+        coEvery {
+            mail_api.list_messages(any(), cursor = eq("next"), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns MailItemsListResponse(page2_items, has_more = true, next_cursor = "next2", total = 1000)
 
         val result = repo.fetch_all_for_search(max_pages = 2)
         assertTrue(result.isSuccess)
@@ -292,20 +318,20 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_inbox with cursor passes cursor to api`() = runTest {
-        coEvery { mail_api.list_messages(any(), cursor = eq("my_cursor"), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), cursor = eq("my_cursor"), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_inbox(cursor = "my_cursor")
-        coVerify { mail_api.list_messages(any(), cursor = "my_cursor", any(), any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), cursor = "my_cursor", any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_inbox with label_token passes it to api`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), label_token = eq("lbl_abc"), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), label_token = eq("lbl_abc"), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_inbox(label_token = "lbl_abc")
-        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), label_token = "lbl_abc", any()) }
+        coVerify { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), label_token = "lbl_abc", any(), any(), any()) }
     }
 
     @Test
@@ -326,7 +352,7 @@ class MailRepositoryTest {
                 has_attachments = true,
             ),
         )
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = listOf(item), has_more = false, next_cursor = null, total = 1)
 
         val result = repo.fetch_inbox()
@@ -512,45 +538,45 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_inbox with custom limit passes limit to api`() = runTest {
-        coEvery { mail_api.list_messages(limit = eq(25), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(limit = eq(25), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_inbox(limit = 25)
-        coVerify { mail_api.list_messages(limit = 25, any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(limit = 25, any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_inbox with default limit uses 50`() = runTest {
-        coEvery { mail_api.list_messages(limit = eq(50), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(limit = eq(50), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         repo.fetch_inbox()
-        coVerify { mail_api.list_messages(limit = 50, any(), any(), any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(limit = 50, any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_sent routes to list_messages with sent type`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), item_type = eq("sent"), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), item_type = eq("sent"), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_sent()
         assertTrue(result.isSuccess)
-        coVerify { mail_api.list_messages(any(), any(), item_type = "sent", any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_messages(any(), any(), item_type = "sent", any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
     fun `fetch_drafts routes to list_messages with draft type`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), item_type = eq("draft"), any(), any(), any(), any(), any(), any()) } returns
-            MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
+        coEvery { mail_api.list_drafts(any(), any()) } returns
+            org.astermail.android.api.mail.DraftsListResponse(items = emptyList(), next_cursor = null, has_more = false)
 
         val result = repo.fetch_drafts()
         assertTrue(result.isSuccess)
-        coVerify { mail_api.list_messages(any(), any(), item_type = "draft", any(), any(), any(), any(), any(), any()) }
+        coVerify { mail_api.list_drafts(any(), any()) }
     }
 
     @Test
     fun `fetch_starred routes with is_starred true`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), is_starred = eq(true), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), is_starred = eq(true), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_starred()
@@ -559,7 +585,7 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_trash routes with is_trashed true`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), is_trashed = eq(true), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), is_trashed = eq(true), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_trash()
@@ -568,7 +594,7 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_spam routes with is_spam true`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = eq(true), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), is_spam = eq(true), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_spam()
@@ -577,7 +603,7 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_archive routes with is_archived true`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = eq(true), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), is_archived = eq(true), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_archive()
@@ -588,11 +614,11 @@ class MailRepositoryTest {
     fun `fetch_all_for_search error on page 2 propagates`() = runTest {
         val page1_items = (1..50).map { fake_mail_item("p1_$it") }
         coEvery {
-            mail_api.list_messages(limit = 50, cursor = isNull(), any(), any(), any(), any(), any(), any(), any())
+            mail_api.list_messages(limit = 50, cursor = isNull(), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } returns MailItemsListResponse(page1_items, has_more = true, next_cursor = "c1", total = 100)
 
         coEvery {
-            mail_api.list_messages(limit = 50, cursor = eq("c1"), any(), any(), any(), any(), any(), any(), any())
+            mail_api.list_messages(limit = 50, cursor = eq("c1"), any(), any(), any(), any(), any(), any(), any(), any(), any())
         } throws RuntimeException("page 2 error")
 
         val result = repo.fetch_all_for_search()
@@ -603,7 +629,7 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_all_for_search with empty first page returns empty list`() = runTest {
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = emptyList(), has_more = false, next_cursor = null, total = 0)
 
         val result = repo.fetch_all_for_search()
@@ -680,7 +706,7 @@ class MailRepositoryTest {
     @Test
     fun `fetch_inbox has_more and next_cursor are preserved`() = runTest {
         val items = listOf(fake_mail_item("i1"))
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = items, has_more = true, next_cursor = "cursor_abc", total = 100)
 
         val result = repo.fetch_inbox()
@@ -724,7 +750,7 @@ class MailRepositoryTest {
     @Test
     fun `fetch_inbox item without thread_token has null thread_token`() = runTest {
         val item = fake_mail_item("no_thread", thread_token = null)
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
+        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
             MailItemsListResponse(items = listOf(item), has_more = false, next_cursor = null, total = 1)
 
         val result = repo.fetch_inbox()

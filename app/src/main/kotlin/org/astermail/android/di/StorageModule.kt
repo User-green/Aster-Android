@@ -22,6 +22,7 @@
 package org.astermail.android.di
 
 import android.content.Context
+import android.content.SharedPreferences
 import androidx.room.Room
 import dagger.Module
 import dagger.Provides
@@ -29,8 +30,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import javax.inject.Singleton
-import org.astermail.android.BuildConfig
 import org.astermail.android.storage.AccountStore
+import org.astermail.android.storage.SecurePrefs
 import org.astermail.android.storage.SessionKeyStore
 import org.astermail.android.storage.SessionSnapshotStore
 import org.astermail.android.storage.ThemeStore
@@ -71,10 +72,55 @@ object StorageModule {
     @Provides
     @Singleton
     fun provide_database(@ApplicationContext context: Context): AsterDatabase {
-        val builder = Room.databaseBuilder(context, AsterDatabase::class.java, "aster_mail_db")
-        if (BuildConfig.DEBUG) {
-            builder.fallbackToDestructiveMigration()
+        val meta = runCatching { SecurePrefs.open(context, db_meta_prefs) }.getOrNull()
+            ?: return build_in_memory_database(context)
+        if (!meta.getBoolean(key_sqlcipher_migrated, false)) {
+            runCatching { context.deleteDatabase(db_name) }
         }
-        return builder.build()
+        return try {
+            val db = build_mail_database(context, meta)
+            runCatching { meta.edit().putBoolean(key_sqlcipher_migrated, true).apply() }
+            db
+        } catch (_: Throwable) {
+            runCatching { context.deleteDatabase(db_name) }
+            build_in_memory_database(context)
+        }
     }
+
+    private fun build_mail_database(
+        context: Context,
+        meta: SharedPreferences,
+    ): AsterDatabase {
+        net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
+        val builder = Room.databaseBuilder(context, AsterDatabase::class.java, db_name)
+        builder.openHelperFactory(
+            net.sqlcipher.database.SupportFactory(db_passphrase(meta), null, false),
+        )
+        builder.fallbackToDestructiveMigration()
+        val db = builder.build()
+        db.openHelper.writableDatabase
+        return db
+    }
+
+    private fun build_in_memory_database(context: Context): AsterDatabase {
+        return Room.inMemoryDatabaseBuilder(context, AsterDatabase::class.java)
+            .fallbackToDestructiveMigration()
+            .build()
+    }
+
+    private fun db_passphrase(meta: SharedPreferences): ByteArray {
+        meta.getString(key_db_key, null)?.let {
+            return android.util.Base64.decode(it, android.util.Base64.NO_WRAP)
+        }
+        val key = ByteArray(32).also { java.security.SecureRandom().nextBytes(it) }
+        meta.edit()
+            .putString(key_db_key, android.util.Base64.encodeToString(key, android.util.Base64.NO_WRAP))
+            .apply()
+        return key
+    }
+
+    private const val db_name = "aster_mail_db"
+    private const val db_meta_prefs = "aster_db_meta"
+    private const val key_sqlcipher_migrated = "sqlcipher_migrated"
+    private const val key_db_key = "db_key"
 }

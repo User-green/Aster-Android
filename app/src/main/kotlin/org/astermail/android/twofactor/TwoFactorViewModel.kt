@@ -30,8 +30,10 @@ import javax.inject.Inject
 import org.astermail.android.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.astermail.android.api.totp.TotpApi
 import org.astermail.android.api.totp.TotpDisableRequest
 import org.astermail.android.api.totp.TotpRegenerateBackupCodesRequest
@@ -166,7 +168,9 @@ class TwoFactorViewModel @Inject constructor(
         }
         viewModelScope.launch {
             _state.value = s.copy(is_busy = true, error = null)
-            val derived = auth_repository.derive_password_hash_b64(s.password_input)
+            val derived = withContext(Dispatchers.Default) {
+                auth_repository.derive_password_hash_b64(s.password_input)
+            }
             if (derived == null) {
                 _state.value = _state.value.copy(
                     is_busy = false,

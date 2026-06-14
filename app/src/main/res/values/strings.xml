@@ -1645,6 +1645,9 @@
     <string name="created_at_format">Created %1$s</string>
     <string name="identity_key_unavailable_hint">Sign in again to restore your key material.</string>
     <string name="export_public_key">Export Public Key</string>
+    <string name="export_private_key_label">Export Private Key</string>
+    <string name="copy_fingerprint_action">Copy fingerprint</string>
+    <string name="copy_public_key_action">Copy public key</string>
     <string name="encryption_feature_client_side">Client-side encryption</string>
     <string name="encryption_feature_client_side_sub">Only you can read your messages</string>
     <string name="encryption_feature_zero_knowledge">Zero-knowledge storage</string>

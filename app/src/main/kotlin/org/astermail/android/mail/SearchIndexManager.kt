@@ -25,6 +25,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -53,19 +54,25 @@ class SearchIndexManager @Inject constructor(
     @Volatile
     private var is_building = false
 
+    private val epoch = java.util.concurrent.atomic.AtomicInteger(0)
+
+    @Volatile
+    private var build_job: Job? = null
+
     fun ensure_index_built() {
         if (is_building || _index_ready.value) return
-        scope.launch { build_index_background() }
+        build_job = scope.launch { build_index_background() }
     }
 
     fun refresh_index() {
-        scope.launch { build_index_background() }
+        build_job = scope.launch { build_index_background() }
     }
 
     fun on_items_loaded(items: List<InboxItem>) {
+        val my_epoch = epoch.get()
         scope.launch {
-            cache_items(items)
-            if (!_index_ready.value) {
+            cache_items(items, my_epoch)
+            if (epoch.get() == my_epoch && !_index_ready.value) {
                 _index_ready.value = dao.count() > 0
             }
         }
@@ -86,8 +93,12 @@ class SearchIndexManager @Inject constructor(
     suspend fun remove_items(ids: List<String>) = dao.remove_items(ids)
 
     suspend fun clear() {
-        dao.clear_all()
-        _index_ready.value = false
+        build_job?.cancel()
+        mutex.withLock {
+            epoch.incrementAndGet()
+            dao.clear_all()
+            _index_ready.value = false
+        }
     }
 
     private suspend fun build_index_background() {
@@ -96,6 +107,7 @@ class SearchIndexManager @Inject constructor(
             else { is_building = true; true }
         }
         if (!took_lock) return
+        val my_epoch = epoch.get()
         try {
             val existing_ids = dao.get_all_ids().toHashSet()
             var cursor: String? = null
@@ -105,20 +117,20 @@ class SearchIndexManager @Inject constructor(
                 val new_items = response.items.filter { it.id !in existing_ids }
                 if (new_items.isNotEmpty()) {
                     val decrypted = repository.decrypt_items_for_cache(new_items)
-                    cache_items(decrypted)
+                    cache_items(decrypted, my_epoch)
                     new_items.forEach { existing_ids.add(it.id) }
                 }
                 if (!response.has_more || response.next_cursor == null) return@repeat
                 cursor = response.next_cursor
             }
-            _index_ready.value = true
+            if (epoch.get() == my_epoch) _index_ready.value = true
         } catch (_: Throwable) {
         } finally {
             mutex.withLock { is_building = false }
         }
     }
 
-    private suspend fun cache_items(items: List<InboxItem>) {
+    private suspend fun cache_items(items: List<InboxItem>, my_epoch: Int) {
         if (items.isEmpty()) return
         val entities = items.map { item ->
             DecryptedMailEntity(
@@ -141,6 +153,9 @@ class SearchIndexManager @Inject constructor(
                 indexed_at = System.currentTimeMillis(),
             )
         }
-        dao.insert_all(entities)
+        mutex.withLock {
+            if (epoch.get() != my_epoch) return
+            dao.insert_all(entities)
+        }
     }
 }

@@ -196,22 +196,24 @@ class ExportViewModel @Inject constructor(
                     _state.update { it.copy(processed = it.processed + 1) }
                     continue
                 }
+                val item_bytes: Long
                 if (is_mbox) {
                     val entry = format_mbox(item, env)
                     val b = entry.toByteArray(Charsets.UTF_8)
                     zos.write(b)
-                    bytes += b.size
+                    item_bytes = b.size.toLong()
                 } else {
                     val entry = format_eml(item, env)
                     val name = "eml/${eml_idx.toString().padStart(6, '0')}_${item.id.take(8)}.eml"
                     zos.putNextEntry(ZipEntry(name))
                     val b = entry.toByteArray(Charsets.UTF_8)
                     zos.write(b)
-                    bytes += b.size
+                    item_bytes = b.size.toLong()
                     zos.closeEntry()
                     eml_idx++
                 }
-                _state.update { it.copy(processed = it.processed + 1, bytes_written = it.bytes_written + bytes) }
+                bytes += item_bytes
+                _state.update { it.copy(processed = it.processed + 1, bytes_written = it.bytes_written + item_bytes) }
             }
             cursor = response.next_cursor
             has_more = response.has_more
@@ -232,7 +234,11 @@ class ExportViewModel @Inject constructor(
             for (c in r.items) {
                 if (!first) sb.append(",")
                 sb.append(
-                    """{"id":"${c.id}","token":"${c.contact_token ?: ""}","created_at":"${c.created_at ?: ""}"}""",
+                    org.json.JSONObject()
+                        .put("id", c.id)
+                        .put("token", c.contact_token ?: "")
+                        .put("created_at", c.created_at ?: "")
+                        .toString(),
                 )
                 first = false
             }

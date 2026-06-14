@@ -739,7 +739,7 @@ private fun vanguard_section(vm: SettingsViewModel, lock_vm: AppLockViewModel) {
                         enabled = app_lock_enabled,
                         on_toggle = { want ->
                             if (want) modal = AppLockModal.setup
-                            else modal = AppLockModal.verify_to_change
+                            else modal = AppLockModal.disable
                         },
                         on_change_pin = { modal = AppLockModal.verify_to_change },
                     )

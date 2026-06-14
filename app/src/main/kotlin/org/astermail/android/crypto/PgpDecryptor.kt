@@ -68,6 +68,8 @@ object PgpDecryptor {
 
                 val secret_key = key_rings.getSecretKey(pbe.keyID) ?: continue
 
+                if (!pbe.isIntegrityProtected()) continue
+
                 val decryptor = JcePBESecretKeyDecryptorBuilder()
                     .setProvider(BouncyCastleProvider.PROVIDER_NAME)
                     .build(passphrase)
@@ -79,7 +81,10 @@ object PgpDecryptor {
 
                 val clear_stream = pbe.getDataStream(decryptor_factory)
                 val plaintext = extract_literal_data(clear_stream)
-                if (plaintext != null) return plaintext
+                if (plaintext != null) {
+                    if (pbe.verify()) return plaintext
+                    return null
+                }
             }
             null
         } catch (_: Throwable) {

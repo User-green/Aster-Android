@@ -145,21 +145,24 @@ class MailingListsViewModel @Inject constructor(
     }
 
     fun reactivate(subscription_id: String) {
+        if (subscription_id in _state.value.pending_ids) return
         _state.value = _state.value.copy(pending_ids = _state.value.pending_ids + subscription_id)
         viewModelScope.launch {
             try {
                 api.reactivate(subscription_id)
                 _state.value = _state.value.copy(
-                    pending_ids = _state.value.pending_ids - subscription_id,
                     items = _state.value.items.map { item ->
                         if (item.id == subscription_id) item.copy(status = "active") else item
                     },
                 )
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (t: Throwable) {
                 _state.value = _state.value.copy(
-                    pending_ids = _state.value.pending_ids - subscription_id,
                     error = t.message ?: context.getString(R.string.reactivate_failed),
                 )
+            } finally {
+                _state.value = _state.value.copy(pending_ids = _state.value.pending_ids - subscription_id)
             }
         }
     }

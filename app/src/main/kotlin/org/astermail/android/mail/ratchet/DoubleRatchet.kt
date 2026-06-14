@@ -31,6 +31,7 @@ object DoubleRatchet {
     private val kdf_info_root = "Aster Mail_Root_KDF".toByteArray(Charsets.UTF_8)
     private val kdf_info_chain = "Aster Mail_Chain_KDF".toByteArray(Charsets.UTF_8)
     private const val max_skip = 1000
+    private const val max_total_skipped = 2000
     private const val skipped_key_ttl_ms = 7L * 24 * 60 * 60 * 1000
 
     fun serialize_header_for_ad(header: MessageHeader): ByteArray {
@@ -173,11 +174,12 @@ object DoubleRatchet {
             dh_public = state.dh_keypair.public_key,
             previous_chain_length = state.previous_chain_length,
             message_number = state.send_message_number,
-            v = null,
+            v = 2,
         )
         val nonce = RatchetCrypto.random_bytes(12)
         val message_key_aes = message_key.copyOfRange(0, 32)
-        val ciphertext = RatchetCrypto.aes_gcm_encrypt(plaintext.toByteArray(Charsets.UTF_8), message_key_aes, nonce, null)
+        val ad = serialize_header_for_ad(header)
+        val ciphertext = RatchetCrypto.aes_gcm_encrypt(plaintext.toByteArray(Charsets.UTF_8), message_key_aes, nonce, ad)
 
         state.chain_key_send = RatchetCrypto.b64_encode(next_chain_key)
         state.send_message_number += 1
@@ -224,6 +226,11 @@ object DoubleRatchet {
     private fun cleanup_old_skipped(state: RatchetState) {
         val cutoff = System.currentTimeMillis() - skipped_key_ttl_ms
         state.skipped_message_keys.removeAll { it.timestamp < cutoff }
+        if (state.skipped_message_keys.size > max_total_skipped) {
+            state.skipped_message_keys.sortBy { it.timestamp }
+            val excess = state.skipped_message_keys.size - max_total_skipped
+            repeat(excess) { state.skipped_message_keys.removeAt(0) }
+        }
     }
 
     private fun clone_state(state: RatchetState): RatchetState {

@@ -88,7 +88,7 @@ object EmailHtmlSanitizer {
             .addAttributes("ul", "type")
             .addAttributes("li", "value")
             .addAttributes("col", "span", "width")
-            .addProtocols("a", "href", "http", "https", "mailto", "tel", "sms", "cid", "aster")
+            .addProtocols("a", "href", "http", "https", "mailto", "tel", "sms", "cid")
             .addProtocols("img", "src", "http", "https", "data", "cid")
             .addProtocols("blockquote", "cite", "http", "https")
             .preserveRelativeLinks(false)
@@ -152,6 +152,7 @@ object EmailHtmlSanitizer {
 
     private fun sanitize_style_value(css: String): String {
         var out = css
+        out = out.replace("<", "")
         out = out.replace(Regex("expression\\s*\\(", RegexOption.IGNORE_CASE), "blocked(")
         out = out.replace(Regex("javascript\\s*:", RegexOption.IGNORE_CASE), "blocked:")
         out = out.replace(Regex("vbscript\\s*:", RegexOption.IGNORE_CASE), "blocked:")
