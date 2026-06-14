@@ -507,7 +507,6 @@ fun ComposeScreen(
             }
             initial_to_chips = to_chips
             initial_subject = subject
-            initial_body = body
             initial_cc_chips = cc_chips
             initial_bcc_chips = bcc_chips
         }

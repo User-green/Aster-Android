@@ -96,6 +96,15 @@ class RatchetEncryptor @Inject constructor(
                 return null
             }
 
+            if (bundle.signed_prekey_signature.isNotBlank()) {
+                val sig_input = (bundle.kem_identity_key + bundle.signed_prekey).toByteArray(Charsets.UTF_8)
+                val expected = RatchetCrypto.sha256(sig_input)
+                val provided = runCatching { RatchetCrypto.b64_decode(bundle.signed_prekey_signature) }.getOrNull()
+                if (provided == null || !expected.contentEquals(provided)) {
+                    if (BuildConfig.DEBUG) android.util.Log.w("AsterRatchet", "prekey bundle signature inconsistent")
+                }
+            }
+
             val recipient_identity_raw = RatchetCrypto.b64_decode(bundle.kem_identity_key)
             val recipient_spk_raw = RatchetCrypto.b64_decode(bundle.signed_prekey)
             val pq_prekey_pair = bundle.pq_prekey?.let { it.key_id to RatchetCrypto.b64_decode(it.public_key) }
