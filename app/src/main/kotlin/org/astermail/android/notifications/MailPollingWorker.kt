@@ -335,7 +335,6 @@ class MailPollingWorker(
             } else {
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_CHAIN)
-                FcmTokenManager.unregister(context)
             }
         }
 
@@ -364,30 +363,33 @@ class MailPollingWorker(
         ) {
             if (!can_post(context)) return
             val private_mode = is_private_notifications(context)
+            val one_line_subject = subject.replace(Regex("\\s+"), " ").trim()
+                .ifBlank { context.getString(R.string.notif_new_message) }
+            val one_line_preview = preview.replace(Regex("\\s+"), " ").trim()
             val builder = base_builder(context)
                 .setWhen(System.currentTimeMillis())
                 .setShowWhen(true)
                 .setGroup(GROUP_KEY_NEW_MAIL)
+                .setContentTitle(sender)
+                .setContentText(one_line_subject)
+            if (one_line_preview.isNotBlank()) {
+                builder.setStyle(
+                    NotificationCompat.InboxStyle()
+                        .addLine(one_line_subject)
+                        .addLine(one_line_preview),
+                )
+            }
             if (private_mode) {
-                builder
-                    .setContentTitle(sender)
-                    .setContentText(context.getString(R.string.notif_new_message))
-                    .setVisibility(NotificationCompat.VISIBILITY_SECRET)
+                builder.setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
+                builder.setPublicVersion(
+                    base_builder(context)
+                        .setContentTitle(context.getString(R.string.app_name))
+                        .setContentText(context.getString(R.string.notif_new_message))
+                        .setGroup(GROUP_KEY_NEW_MAIL)
+                        .build(),
+                )
             } else {
-                val one_line_subject = subject.replace(Regex("\\s+"), " ").trim()
-                    .ifBlank { context.getString(R.string.notif_new_message) }
-                val one_line_preview = preview.replace(Regex("\\s+"), " ").trim()
-                builder
-                    .setContentTitle(sender)
-                    .setContentText(one_line_subject)
-                    .setVisibility(NotificationCompat.VISIBILITY_PRIVATE)
-                if (one_line_preview.isNotBlank()) {
-                    builder.setStyle(
-                        NotificationCompat.InboxStyle()
-                            .addLine(one_line_subject)
-                            .addLine(one_line_preview),
-                    )
-                }
+                builder.setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             }
             val manager = NotificationManagerCompat.from(context)
             manager.notify(message_id, builder.build())

@@ -71,7 +71,6 @@ class AsterApplication : Application(), ImageLoaderFactory {
         runCatching { org.astermail.android.notifications.MailPollingWorker.create_channel(this) }
         runCatching { org.astermail.android.notifications.MailPollingWorker.enqueue(this) }
         runCatching { org.astermail.android.notifications.UnifiedPushState.try_register(this) }
-        runCatching { org.astermail.android.notifications.FcmTokenManager.init(this) }
     }
 
     @EntryPoint

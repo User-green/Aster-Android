@@ -107,6 +107,7 @@ data class UserPreferences(
     val publish_to_keyservers: Boolean = false,
     val storage_format: String = "aster",
     val warn_external_recipients: Boolean = true,
+    val show_aster_branding: Boolean = true,
 )
 
 @Serializable

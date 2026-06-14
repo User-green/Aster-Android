@@ -135,9 +135,6 @@ dependencies {
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
     implementation(libs.jsoup)
-    "fullImplementation"(platform(libs.firebase.bom))
-    "fullImplementation"(libs.firebase.messaging)
-    "fullImplementation"(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.process)
@@ -150,8 +147,4 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
-}
-
-if (!is_fdroid_build) {
-    apply(plugin = "com.google.gms.google-services")
 }
