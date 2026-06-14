@@ -272,7 +272,10 @@ fun MailDetailScreen(
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
     val swipe_threshold_px = with(density) { 200.dp.toPx() }
     val settings_state by settings_vm.state.collectAsStateWithLifecycle()
-    val block_external_images = (settings_state.preferences?.block_external_images ?: true) || (settings_state.preferences?.low_network_mode == true)
+    val privacy_blocks_external = settings_state.preferences?.block_external_images ?: true
+    val traffic_blocks_external = settings_state.preferences?.low_network_mode == true
+    val block_external_images = privacy_blocks_external || traffic_blocks_external
+    val blocked_for_traffic_only = traffic_blocks_external && !privacy_blocks_external
     val thread_state by mail_vm.thread_state.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
 
@@ -784,6 +787,7 @@ fun MailDetailScreen(
                             my_profile_pic = my_profile_pic,
                             show_top_divider = !is_after_indicator,
                             allow_external = !block_external_images || msg.id in allow_external_ids || is_system_sender,
+                            blocked_for_traffic = blocked_for_traffic_only,
                             on_load_external = {
                                 allow_external_ids = allow_external_ids + msg.id
                             },
@@ -792,6 +796,13 @@ fun MailDetailScreen(
                                 val base = settings_state.preferences
                                 if (base != null) {
                                     settings_vm.save_preferences(base.copy(block_external_images = false))
+                                }
+                            },
+                            on_disable_low_network = {
+                                allow_external_ids = allow_external_ids + msg.id
+                                val base = settings_state.preferences
+                                if (base != null) {
+                                    settings_vm.save_preferences(base.copy(low_network_mode = false))
                                 }
                             },
                             show_unsub = msg.id !in dismissed_unsub_ids,
@@ -1201,8 +1212,10 @@ private fun expanded_message(
     my_email: String = "",
     my_profile_pic: String? = null,
     allow_external: Boolean = false,
+    blocked_for_traffic: Boolean = false,
     on_load_external: () -> Unit = {},
     on_always_allow_external: () -> Unit = {},
+    on_disable_low_network: () -> Unit = {},
     show_unsub: Boolean = true,
     on_dismiss_unsub: () -> Unit = {},
     on_unsubscribe: (String) -> Unit = {},
@@ -1382,11 +1395,19 @@ private fun expanded_message(
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
-            external_content_banner(
-                counts = external_counts,
-                on_allow_once = on_load_external,
-                on_always_allow = on_always_allow_external,
-            )
+            if (blocked_for_traffic) {
+                traffic_saver_banner(
+                    counts = external_counts,
+                    on_load_once = on_load_external,
+                    on_disable_traffic_saving = on_disable_low_network,
+                )
+            } else {
+                external_content_banner(
+                    counts = external_counts,
+                    on_allow_once = on_load_external,
+                    on_always_allow = on_always_allow_external,
+                )
+            }
         }
 
         val phishing_result by produceState<org.astermail.android.security.PhishingResult?>(
@@ -1724,6 +1745,74 @@ private fun external_content_banner(
             org.astermail.android.design.components.AsterDialogPrimaryButton(
                 label = stringResource(R.string.detail_external_always_allow),
                 onClick = on_always_allow,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun traffic_saver_banner(
+    counts: ExternalContentCounts,
+    on_load_once: () -> Unit,
+    on_disable_traffic_saving: () -> Unit,
+) {
+    val colors = AsterMaterial.colors
+    val summary_parts = mutableListOf<String>()
+    if (counts.image_count > 0) {
+        val n = counts.image_count
+        summary_parts.add(if (n == 1) stringResource(R.string.one_image) else stringResource(R.string.n_images, n))
+    }
+    if (counts.font_count > 0) {
+        val n = counts.font_count
+        summary_parts.add(if (n == 1) stringResource(R.string.one_font) else stringResource(R.string.n_fonts, n))
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.xs)
+            .clip(SquircleShape(18.dp))
+            .background(colors.bg_secondary)
+            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.sm),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                imageVector = Icons.Outlined.ImageNotSupported,
+                contentDescription = null,
+                tint = colors.text_secondary,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(AsterSpacing.sm))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.detail_external_images_traffic_blocked),
+                    color = colors.text_primary,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+                if (summary_parts.isNotEmpty()) {
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = summary_parts.joinToString(", "),
+                        color = colors.text_muted,
+                        fontSize = 12.sp,
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(AsterSpacing.sm))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
+        ) {
+            org.astermail.android.design.components.AsterDialogOutlineButton(
+                label = stringResource(R.string.detail_external_allow_once),
+                onClick = on_load_once,
+                modifier = Modifier.weight(1f),
+            )
+            org.astermail.android.design.components.AsterDialogPrimaryButton(
+                label = stringResource(R.string.detail_disable_traffic_saving),
+                onClick = on_disable_traffic_saving,
                 modifier = Modifier.weight(1f),
             )
         }
