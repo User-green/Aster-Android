@@ -796,7 +796,7 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val status = security_api.get_login_alerts()
-                _state.update { it.copy(login_alerts_enabled = status.login_alerts_enabled) }
+                _state.update { it.copy(login_alerts_enabled = status.enabled) }
             } catch (t: Throwable) {
                 if (org.astermail.android.BuildConfig.DEBUG) android.util.Log.w("SettingsVM", "load_login_alerts", t)
             }
@@ -807,7 +807,7 @@ class SettingsViewModel @Inject constructor(
         _state.update { it.copy(login_alerts_enabled = enabled) }
         viewModelScope.launch {
             try {
-                security_api.set_login_alerts(SetLoginAlertRequest(login_alerts_enabled = enabled))
+                security_api.set_login_alerts(SetLoginAlertRequest(enabled = enabled))
             } catch (_: Throwable) {
                 _state.update { it.copy(
                     login_alerts_enabled = !enabled,
