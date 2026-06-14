@@ -369,12 +369,9 @@ fun ComposeScreen(
         if (mode == "draft") { signature_applied = true; return@LaunchedEffect }
         if (prefill.body.isNotBlank()) { signature_applied = true; return@LaunchedEffect }
         val resolved = settings_vm.signature_for(current_alias_id)?.content.orEmpty()
-        val watermark = context.getString(R.string.compose_footer_secured_by_plain)
-        body = if (resolved.isNotBlank()) {
-            "\n\n${resolved}\n\n${watermark}"
-        } else {
-            "\n\n${watermark}"
-        }
+        val show_branding = settings_state.preferences?.show_aster_branding != false
+        val watermark = if (show_branding) "\n\n${context.getString(R.string.compose_footer_secured_by_plain)}" else ""
+        body = if (resolved.isNotBlank()) "\n\n${resolved}${watermark}" else watermark
         applied_signature = resolved
         initial_body = body
         signature_applied = true
@@ -738,10 +735,14 @@ fun ComposeScreen(
         return sb.toString()
     }
 
-    fun prepare_send_data(): Pair<String, List<org.astermail.android.api.send.ExternalAttachmentPayload>> {
-        val body_without_footer = get_body_with_formatting()
-            .removeSuffix(footer_secured_by_plain)
-            .trimEnd('\n', ' ')
+    fun prepare_send_data(): Triple<String, List<org.astermail.android.api.send.ExternalAttachmentPayload>, Boolean> {
+        val raw_formatted_body = get_body_with_formatting()
+        val strip_branding = settings_state.preferences?.show_aster_branding == false
+        val branding_footer_kept = raw_formatted_body.contains(footer_secured_by_plain)
+        val body_without_footer = (
+            if (strip_branding) raw_formatted_body.replace(footer_secured_by_plain, "")
+            else raw_formatted_body.removeSuffix(footer_secured_by_plain)
+        ).trimEnd('\n', ' ')
         val image_html_for = mutableMapOf<Int, String>()
         inline_images.forEachIndexed { idx, img ->
             val bytes = try {
@@ -806,7 +807,7 @@ fun ComposeScreen(
         }.orEmpty()
         val body_html = with_images + quote_block
 
-        return body_html to attachment_payloads
+        return Triple(body_html, attachment_payloads, !branding_footer_kept)
     }
 
     val send_lock = remember { java.util.concurrent.atomic.AtomicBoolean(false) }
@@ -818,6 +819,7 @@ fun ComposeScreen(
         snapshot_bcc: List<String> = bcc_chips.toList(),
         snapshot_subject: String = subject,
         snapshot_from: String = from_alias,
+        suppress_branding: Boolean = false,
     ) {
         if (snapshot_to.isEmpty()) {
             is_sending = false
@@ -838,6 +840,7 @@ fun ComposeScreen(
                 expires_at = expires_at_iso,
                 attachments = attachment_payloads,
                 sender_alias_hash = if (snapshot_from != user_email) alias_hash_map[snapshot_from]?.takeIf { it.isNotBlank() } else null,
+                suppress_branding = suppress_branding,
             )
             result.fold(
                 onSuccess = {
@@ -860,7 +863,7 @@ fun ComposeScreen(
         is_sending = true
         send_error = null
 
-        val (body_html, attachment_payloads) = prepare_send_data()
+        val (body_html, attachment_payloads, suppress_branding) = prepare_send_data()
 
         if (scheduled_send) {
             scope.launch {
@@ -922,6 +925,7 @@ fun ComposeScreen(
                     expires_at = expires_at_iso,
                     attachments = attachment_payloads,
                     sender_alias_hash = if (snap_from != user_email) alias_hash_map[snap_from]?.takeIf { it.isNotBlank() } else null,
+                    suppress_branding = suppress_branding,
                     undo_seconds = undo_send_seconds,
                     draft_id = snapshot_draft_id,
                 )
@@ -930,7 +934,7 @@ fun ComposeScreen(
                 on_sent()
             }
         } else {
-            execute_send(body_html, attachment_payloads, snap_to, snap_cc, snap_bcc, snap_subject, snap_from)
+            execute_send(body_html, attachment_payloads, snap_to, snap_cc, snap_bcc, snap_subject, snap_from, suppress_branding)
         }
     }
 

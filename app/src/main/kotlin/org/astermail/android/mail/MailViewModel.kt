@@ -1313,6 +1313,7 @@ class MailViewModel @Inject constructor(
         expires_at: String? = null,
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
+        suppress_branding: Boolean? = null,
     ): Result<org.astermail.android.api.send.SimpleSendResponse> {
         val result = repository.send_email(
             to = to,
@@ -1326,6 +1327,7 @@ class MailViewModel @Inject constructor(
             expires_at = expires_at,
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
+            suppress_branding = suppress_branding,
         )
         if (result.isSuccess) {
             invalidate_caches(listOf("sent", "drafts"))
@@ -1362,6 +1364,7 @@ class MailViewModel @Inject constructor(
         expires_at: String? = null,
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
+        suppress_branding: Boolean? = null,
         undo_seconds: Int,
         draft_id: String? = null,
     ) {
@@ -1377,6 +1380,7 @@ class MailViewModel @Inject constructor(
             expires_at = expires_at,
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
+            suppress_branding = suppress_branding,
             undo_seconds = undo_seconds,
             draft_id = draft_id,
         )

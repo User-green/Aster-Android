@@ -412,11 +412,24 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(is_loading = true, error = null)
             try {
-                val response = settings_api.list_aliases()
-                val decrypted = response.aliases.map { decrypt_alias(it) }
+                val page_size = 100
+                val max_pages = 50
+                val all_aliases = mutableListOf<AliasInfo>()
+                var offset = 0
+                var max_aliases = 0
+                var page = 0
+                while (page < max_pages) {
+                    val response = settings_api.list_aliases(limit = page_size, offset = offset)
+                    all_aliases.addAll(response.aliases)
+                    max_aliases = response.max_aliases
+                    if (!response.has_more || response.aliases.isEmpty()) break
+                    offset += response.aliases.size
+                    page++
+                }
+                val decrypted = all_aliases.map { decrypt_alias(it) }
                 _state.value = _state.value.copy(
                     aliases = decrypted,
-                    max_aliases = response.max_aliases,
+                    max_aliases = max_aliases,
                     is_loading = false,
                 )
             } catch (t: Throwable) {

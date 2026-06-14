@@ -75,13 +75,13 @@ fun FilteredInboxScreen(
     val mail_vm: MailViewModel = hiltViewModel()
     val inbox_state by mail_vm.inbox_state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(filter_type, filter_value) {
-        val folder = when (filter_type) {
-            FilterType.folder -> filter_value
-            FilterType.label -> "label:$filter_value"
-            FilterType.alias -> "inbox"
-        }
-        mail_vm.load_inbox(folder, force = true)
+    val requested_folder = when (filter_type) {
+        FilterType.folder -> filter_value
+        FilterType.label -> "label:$filter_value"
+        FilterType.alias -> "inbox"
+    }
+    LaunchedEffect(requested_folder) {
+        mail_vm.load_inbox(requested_folder, force = true)
     }
 
     LaunchedEffect(list_state) {
@@ -115,7 +115,7 @@ fun FilteredInboxScreen(
                 on_open_drawer = on_open_drawer,
             )
             AsterDivider(modifier = Modifier.fillMaxWidth())
-            if (inbox_state.is_loading) {
+            if (inbox_state.is_loading || inbox_state.current_folder != requested_folder) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center,

@@ -381,7 +381,7 @@ interface SettingsApi {
     suspend fun list_blocked_senders(): BlockedSendersResponse
     suspend fun block_sender(address: String)
     suspend fun unblock_sender(address: String)
-    suspend fun list_aliases(): AliasListResponse
+    suspend fun list_aliases(limit: Int = 100, offset: Int = 0): AliasListResponse
     suspend fun delete_alias(alias_id: String)
     suspend fun create_alias(request: CreateAliasRequest): CreateAliasResponse
     suspend fun update_alias(alias_id: String, request: UpdateAliasRequest): Boolean
@@ -498,8 +498,13 @@ class SettingsApiImpl(private val client: ApiClient) : SettingsApi {
         }
     }
 
-    override suspend fun list_aliases(): AliasListResponse {
-        val response = client.http.get("${client.base_url}/api/addresses/v1/aliases")
+    override suspend fun list_aliases(limit: Int, offset: Int): AliasListResponse {
+        val response = client.http.get("${client.base_url}/api/addresses/v1/aliases") {
+            url {
+                parameters.append("limit", limit.toString())
+                parameters.append("offset", offset.toString())
+            }
+        }
         return decode_or_throw(response)
     }
 

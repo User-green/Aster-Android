@@ -421,77 +421,86 @@ fun SecurityScreen(
 
         section_label(stringResource(R.string.section_content_protection))
         AsterCard(modifier = Modifier.fillMaxWidth()) {
-            detail_row(
-                title = stringResource(R.string.block_remote_images),
-                subtitle = stringResource(R.string.block_remote_images_subtitle_security),
-                icon = Icons.Outlined.HideImage,
-                info_title = stringResource(R.string.block_remote_images_info_title),
-                info_description = stringResource(R.string.block_remote_images_info_desc),
-                trailing = {
-                    Switch(
-                        checked = prefs?.block_external_images != false,
-                        onCheckedChange = { v -> toggle { it.copy(block_external_images = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.block_tracking_pixels),
-                subtitle = stringResource(R.string.block_tracking_pixels_subtitle_security),
-                icon = Icons.Outlined.TrackChanges,
-                info_title = stringResource(R.string.block_tracking_pixels_info_title),
-                info_description = stringResource(R.string.block_tracking_pixels_info_desc),
-                trailing = {
-                    Switch(
-                        checked = prefs?.block_tracking_pixels != false,
-                        onCheckedChange = { v -> toggle { it.copy(block_tracking_pixels = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.block_tracking_links),
-                subtitle = stringResource(R.string.block_tracking_links_subtitle),
-                icon = Icons.Outlined.Shield,
-                info_title = stringResource(R.string.block_tracking_links_info_title),
-                info_description = stringResource(R.string.block_tracking_links_info_desc),
-                trailing = {
-                    Switch(
-                        checked = prefs?.block_tracking_links != false,
-                        onCheckedChange = { v -> toggle { it.copy(block_tracking_links = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.warn_suspicious_links),
-                subtitle = stringResource(R.string.warn_suspicious_links_subtitle),
-                icon = Icons.Outlined.Warning,
-                info_title = stringResource(R.string.warn_suspicious_links_info_title),
-                info_description = stringResource(R.string.warn_suspicious_links_info_desc),
-                trailing = {
-                    Switch(
-                        checked = prefs?.warn_suspicious_links != false,
-                        onCheckedChange = { v -> toggle { it.copy(warn_suspicious_links = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
+            if (prefs == null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+                }
+            } else {
+                detail_row(
+                    title = stringResource(R.string.block_remote_images),
+                    subtitle = stringResource(R.string.block_remote_images_subtitle_security),
+                    icon = Icons.Outlined.HideImage,
+                    info_title = stringResource(R.string.block_remote_images_info_title),
+                    info_description = stringResource(R.string.block_remote_images_info_desc),
+                    trailing = {
+                        Switch(
+                            checked = prefs.block_external_images != false,
+                            onCheckedChange = { v -> toggle { it.copy(block_external_images = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.block_tracking_pixels),
+                    subtitle = stringResource(R.string.block_tracking_pixels_subtitle_security),
+                    icon = Icons.Outlined.TrackChanges,
+                    info_title = stringResource(R.string.block_tracking_pixels_info_title),
+                    info_description = stringResource(R.string.block_tracking_pixels_info_desc),
+                    trailing = {
+                        Switch(
+                            checked = prefs.block_tracking_pixels != false,
+                            onCheckedChange = { v -> toggle { it.copy(block_tracking_pixels = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.block_tracking_links),
+                    subtitle = stringResource(R.string.block_tracking_links_subtitle),
+                    icon = Icons.Outlined.Shield,
+                    info_title = stringResource(R.string.block_tracking_links_info_title),
+                    info_description = stringResource(R.string.block_tracking_links_info_desc),
+                    trailing = {
+                        Switch(
+                            checked = prefs.block_tracking_links != false,
+                            onCheckedChange = { v -> toggle { it.copy(block_tracking_links = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.warn_suspicious_links),
+                    subtitle = stringResource(R.string.warn_suspicious_links_subtitle),
+                    icon = Icons.Outlined.Warning,
+                    info_title = stringResource(R.string.warn_suspicious_links_info_title),
+                    info_description = stringResource(R.string.warn_suspicious_links_info_desc),
+                    trailing = {
+                        Switch(
+                            checked = prefs.warn_suspicious_links != false,
+                            onCheckedChange = { v -> toggle { it.copy(warn_suspicious_links = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+            }
         }
 
         v_gap(AsterSpacing.lg)
@@ -502,39 +511,48 @@ fun SecurityScreen(
 
         section_label(stringResource(R.string.section_privacy_security))
         AsterCard(modifier = Modifier.fillMaxWidth()) {
-            detail_row(
-                title = stringResource(R.string.strip_exif),
-                subtitle = stringResource(R.string.strip_exif_subtitle),
-                icon = Icons.Outlined.PrivacyTip,
-                info_title = stringResource(R.string.strip_exif_info_title),
-                info_description = stringResource(R.string.strip_exif_info_desc),
-                trailing = {
-                    Switch(
-                        checked = prefs?.strip_exif != false,
-                        onCheckedChange = { v -> toggle { it.copy(strip_exif = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.send_read_receipts),
-                subtitle = stringResource(R.string.send_read_receipts_subtitle),
-                icon = Icons.Outlined.RemoveRedEye,
-                trailing = {
-                    Switch(
-                        checked = prefs?.send_read_receipts == true,
-                        onCheckedChange = { v -> toggle { it.copy(send_read_receipts = v) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
+            if (prefs == null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+                }
+            } else {
+                detail_row(
+                    title = stringResource(R.string.strip_exif),
+                    subtitle = stringResource(R.string.strip_exif_subtitle),
+                    icon = Icons.Outlined.PrivacyTip,
+                    info_title = stringResource(R.string.strip_exif_info_title),
+                    info_description = stringResource(R.string.strip_exif_info_desc),
+                    trailing = {
+                        Switch(
+                            checked = prefs.strip_exif != false,
+                            onCheckedChange = { v -> toggle { it.copy(strip_exif = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.send_read_receipts),
+                    subtitle = stringResource(R.string.send_read_receipts_subtitle),
+                    icon = Icons.Outlined.RemoveRedEye,
+                    trailing = {
+                        Switch(
+                            checked = prefs.send_read_receipts == true,
+                            onCheckedChange = { v -> toggle { it.copy(send_read_receipts = v) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+            }
         }
 
         v_gap(AsterSpacing.lg)
@@ -663,7 +681,13 @@ private fun vanguard_section(vm: SettingsViewModel, lock_vm: AppLockViewModel) {
                         fontSize = 13.sp,
                     )
                 }
-                if (is_nova_plus || state.subscription == null) {
+                if (state.vanguard_enabled == null) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp,
+                        color = colors.text_muted,
+                    )
+                } else if (is_nova_plus || state.subscription == null) {
                     Switch(
                         checked = vanguard_enabled,
                         onCheckedChange = { v ->
