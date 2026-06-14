@@ -23,12 +23,31 @@ package org.astermail.android.design
 
 import androidx.compose.material3.Typography
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 
-val inter_family = FontFamily.Default
+private val roboto_flex_weights = listOf(
+    FontWeight.Normal,
+    FontWeight.Medium,
+    FontWeight.SemiBold,
+    FontWeight.Bold,
+)
+
+@OptIn(ExperimentalTextApi::class)
+val inter_family = FontFamily(
+    roboto_flex_weights.map { weight ->
+        Font(
+            R.font.roboto_flex,
+            weight = weight,
+            variationSettings = FontVariation.Settings(FontVariation.weight(weight.weight)),
+        )
+    },
+)
 
 val local_dyslexia_font = compositionLocalOf<FontFamily?> { null }
 
