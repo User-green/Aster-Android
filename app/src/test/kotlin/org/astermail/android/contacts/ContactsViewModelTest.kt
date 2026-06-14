@@ -21,8 +21,10 @@
 
 package org.astermail.android.contacts
 
+import android.content.Context
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +33,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.astermail.android.R
 import org.astermail.android.api.contacts.CreateContactResponse
 import org.astermail.android.api.contacts.DeleteContactResponse
 import org.astermail.android.ui.contacts.Contact
@@ -47,13 +50,22 @@ class ContactsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: ContactsRepository
+    private lateinit var context: Context
     private lateinit var vm: ContactsViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
         repository = mockk(relaxed = true)
-        vm = ContactsViewModel(repository)
+        context = mockk(relaxed = true)
+        val strings = mapOf(
+            R.string.something_went_wrong to "Something went wrong",
+            R.string.error_no_connection to "Could not connect to the server. Check your internet connection.",
+            R.string.error_timeout to "Connection timed out. Please try again.",
+            R.string.error_ssl to "Secure connection failed. Please try again.",
+        )
+        every { context.getString(any()) } answers { strings[firstArg()] ?: "" }
+        vm = ContactsViewModel(repository, context)
     }
 
     @After
@@ -121,14 +133,14 @@ class ContactsViewModelTest {
     @Test
     fun `load_contacts error sets error message`() = runTest {
         coEvery { repository.fetch_contacts() } returns
-            Result.failure(RuntimeException("network timeout"))
+            Result.failure(RuntimeException("server rejected request"))
 
         vm.load_contacts()
         advanceUntilIdle()
 
         val state = vm.state.value
         assertFalse(state.is_loading)
-        assertEquals("network timeout", state.error)
+        assertEquals("server rejected request", state.error)
         assertTrue(state.contacts.isEmpty())
     }
 
@@ -140,7 +152,7 @@ class ContactsViewModelTest {
         vm.load_contacts()
         advanceUntilIdle()
 
-        assertEquals("failed to load contacts", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -196,7 +208,7 @@ class ContactsViewModelTest {
         vm.load_contact("c_1")
         advanceUntilIdle()
 
-        assertEquals("failed to load contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -261,7 +273,7 @@ class ContactsViewModelTest {
         vm.save_contact(contact)
         advanceUntilIdle()
 
-        assertEquals("failed to save contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -328,7 +340,7 @@ class ContactsViewModelTest {
         vm.delete_contact("c_1")
         advanceUntilIdle()
 
-        assertEquals("failed to delete contact", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test

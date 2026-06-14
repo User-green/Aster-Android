@@ -21,10 +21,14 @@
 
 package org.astermail.android.settings
 
+import android.content.Context
+import android.util.Base64
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import io.mockk.verify
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -33,6 +37,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.astermail.android.R
 import org.astermail.android.api.auth.AuthApi
 import org.astermail.android.api.auth.UserInfo
 import org.astermail.android.api.autoforward.AutoForwardApi
@@ -43,6 +48,7 @@ import org.astermail.android.api.developer.ApiKeyListResponse
 import org.astermail.android.api.developer.DeveloperApi
 import org.astermail.android.api.developer.WebhookInfo
 import org.astermail.android.api.developer.WebhookListResponse
+import org.astermail.android.api.encryption.EncryptionApi
 import org.astermail.android.api.ghost.GhostAlias
 import org.astermail.android.api.ghost.GhostAliasApi
 import org.astermail.android.api.ghost.GhostAliasListResponse
@@ -54,6 +60,9 @@ import org.astermail.android.api.labels.ReferralInfoResponse
 import org.astermail.android.api.tags.TagsApi
 import org.astermail.android.api.preferences.PreferencesApi
 import org.astermail.android.api.preferences.UserPreferences
+import org.astermail.android.api.recovery_email.RecoveryEmailApi
+import org.astermail.android.api.security.SecurityApi
+import org.astermail.android.api.signatures.SignaturesApi
 import org.astermail.android.api.settings.AliasInfo
 import org.astermail.android.api.settings.AliasListResponse
 import org.astermail.android.api.settings.BlockedSenderInfo
@@ -68,6 +77,7 @@ import org.astermail.android.api.subscriptions.SubscriptionsApi
 import org.astermail.android.api.user.UpdateDisplayNameResponse
 import org.astermail.android.api.user.UserApi
 import org.astermail.android.auth.AuthRepository
+import org.astermail.android.storage.AccountStore
 import org.astermail.android.storage.SessionKeyStore
 import org.astermail.android.storage.TokenStore
 import org.junit.After
@@ -89,40 +99,75 @@ class SettingsViewModelTest {
     private lateinit var labels_api: LabelsApi
     private lateinit var tags_api: TagsApi
     private lateinit var preferences_api: PreferencesApi
+    private lateinit var signatures_api: SignaturesApi
     private lateinit var ghost_alias_api: GhostAliasApi
     private lateinit var auto_forward_api: AutoForwardApi
     private lateinit var developer_api: DeveloperApi
     private lateinit var subscriptions_api: SubscriptionsApi
+    private lateinit var recovery_email_api: RecoveryEmailApi
+    private lateinit var security_api: SecurityApi
+    private lateinit var encryption_api: EncryptionApi
     private lateinit var auth_repository: AuthRepository
     private lateinit var session_key_store: SessionKeyStore
     private lateinit var token_store: TokenStore
+    private lateinit var account_store: AccountStore
+    private lateinit var context: Context
     private lateinit var vm: SettingsViewModel
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        mockkStatic(android.util.Log::class)
+        every { android.util.Log.v(any(), any()) } returns 0
+        every { android.util.Log.v(any(), any(), any()) } returns 0
+        every { android.util.Log.d(any(), any()) } returns 0
+        every { android.util.Log.d(any(), any(), any()) } returns 0
+        every { android.util.Log.i(any(), any()) } returns 0
+        every { android.util.Log.i(any(), any(), any()) } returns 0
+        every { android.util.Log.w(any(), any<String>()) } returns 0
+        every { android.util.Log.w(any(), any<String>(), any()) } returns 0
+        every { android.util.Log.w(any(), any<Throwable>()) } returns 0
+        every { android.util.Log.e(any(), any()) } returns 0
+        every { android.util.Log.e(any(), any(), any()) } returns 0
+        mockkStatic(Base64::class)
+        every { Base64.encodeToString(any(), any()) } answers {
+            java.util.Base64.getEncoder().encodeToString(firstArg())
+        }
+        every { Base64.decode(any<String>(), any()) } answers {
+            java.util.Base64.getDecoder().decode(firstArg<String>())
+        }
         auth_api = mockk(relaxed = true)
         user_api = mockk(relaxed = true)
         settings_api = mockk(relaxed = true)
         labels_api = mockk(relaxed = true)
         tags_api = mockk(relaxed = true)
         preferences_api = mockk(relaxed = true)
+        signatures_api = mockk(relaxed = true)
         ghost_alias_api = mockk(relaxed = true)
         auto_forward_api = mockk(relaxed = true)
         developer_api = mockk(relaxed = true)
         subscriptions_api = mockk(relaxed = true)
+        recovery_email_api = mockk(relaxed = true)
+        security_api = mockk(relaxed = true)
+        encryption_api = mockk(relaxed = true)
         auth_repository = mockk(relaxed = true)
         session_key_store = mockk(relaxed = true)
         token_store = mockk(relaxed = true)
+        account_store = mockk(relaxed = true)
+        context = mockk(relaxed = true)
+        every { context.getString(R.string.something_went_wrong) } returns "Something went wrong"
         vm = SettingsViewModel(
             auth_api, user_api, settings_api, labels_api, tags_api, preferences_api,
-            ghost_alias_api, auto_forward_api, developer_api, subscriptions_api,
-            auth_repository, session_key_store, token_store,
+            signatures_api, ghost_alias_api, auto_forward_api, developer_api,
+            subscriptions_api, recovery_email_api, security_api, encryption_api,
+            auth_repository, session_key_store, token_store, account_store, context,
         )
     }
 
     @After
     fun teardown() {
+        unmockkStatic(Base64::class)
+        unmockkStatic(android.util.Log::class)
         Dispatchers.resetMain()
     }
 
@@ -199,8 +244,8 @@ class SettingsViewModelTest {
     @Test
     fun `load_sessions populates sessions list`() = runTest {
         val sessions = listOf(
-            SessionInfo(id = "s1", ip_address = "1.2.3.4", is_current = true),
-            SessionInfo(id = "s2", ip_address = "5.6.7.8", is_current = false),
+            SessionInfo(id = "s1", device_type = "mobile", is_current = true),
+            SessionInfo(id = "s2", device_type = "desktop", is_current = false),
         )
         coEvery { settings_api.list_sessions() } returns SessionListResponse(sessions)
 
@@ -209,6 +254,7 @@ class SettingsViewModelTest {
 
         assertEquals(2, vm.state.value.sessions.size)
         assertTrue(vm.state.value.sessions[0].is_current)
+        assertEquals("mobile", vm.state.value.sessions[0].device_type)
     }
 
     @Test
@@ -218,7 +264,14 @@ class SettingsViewModelTest {
             SessionInfo(id = "s2", is_current = false),
             SessionInfo(id = "s3", is_current = false),
         )
-        coEvery { settings_api.list_sessions() } returns SessionListResponse(sessions)
+        val after_revoke = listOf(
+            SessionInfo(id = "s1", is_current = true),
+            SessionInfo(id = "s3", is_current = false),
+        )
+        coEvery { settings_api.list_sessions() } returnsMany listOf(
+            SessionListResponse(sessions),
+            SessionListResponse(after_revoke),
+        )
 
         vm.load_sessions()
         advanceUntilIdle()
@@ -343,7 +396,7 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertTrue(vm.state.value.security_status?.totp_enabled == true)
-        assertTrue(vm.state.value.security_status?.recovery_email_set == true)
+        assertFalse(vm.state.value.security_status?.recovery_email_set == true)
     }
 
     @Test
@@ -591,7 +644,7 @@ class SettingsViewModelTest {
         val aliases = listOf(
             AliasInfo(id = "a1", encrypted_local_part = "alias1", domain = "astermail.org"),
         )
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(aliases)
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(aliases)
         every { session_key_store.get_identity_key() } returns null
 
         vm.load_aliases()
@@ -606,7 +659,7 @@ class SettingsViewModelTest {
             AliasInfo(id = "a1", encrypted_local_part = "alias1", domain = "astermail.org"),
             AliasInfo(id = "a2", encrypted_local_part = "alias2", domain = "astermail.org"),
         )
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(aliases)
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(aliases)
         every { session_key_store.get_identity_key() } returns null
 
         vm.load_aliases()
@@ -855,7 +908,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `load_aliases error sets error message`() = runTest {
-        coEvery { settings_api.list_aliases() } throws RuntimeException("alias error")
+        coEvery { settings_api.list_aliases(any(), any()) } throws RuntimeException("alias error")
 
         vm.load_aliases()
         advanceUntilIdle()
@@ -867,7 +920,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `load_aliases empty list`() = runTest {
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(emptyList())
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(emptyList())
         every { session_key_store.get_identity_key() } returns null
 
         vm.load_aliases()
@@ -882,7 +935,7 @@ class SettingsViewModelTest {
         val aliases = listOf(
             AliasInfo(id = "a1", encrypted_local_part = "alias1", domain = "astermail.org"),
         )
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(aliases)
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(aliases)
         every { session_key_store.get_identity_key() } returns null
         coEvery { settings_api.delete_alias("a1") } throws RuntimeException("error")
 
@@ -900,7 +953,7 @@ class SettingsViewModelTest {
         val aliases = listOf(
             AliasInfo(id = "a1", encrypted_local_part = "alias1", domain = "astermail.org"),
         )
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(aliases)
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(aliases)
         every { session_key_store.get_identity_key() } returns null
 
         vm.load_aliases()
@@ -1136,6 +1189,13 @@ class SettingsViewModelTest {
     @Test
     fun `load_preferences error sets error message`() = runTest {
         coEvery { preferences_api.get_encrypted_preferences() } throws RuntimeException("prefs error")
+        coEvery { preferences_api.get_preferences() } throws RuntimeException("prefs error")
+        vm = SettingsViewModel(
+            auth_api, user_api, settings_api, labels_api, tags_api, preferences_api,
+            signatures_api, ghost_alias_api, auto_forward_api, developer_api,
+            subscriptions_api, recovery_email_api, security_api, encryption_api,
+            auth_repository, session_key_store, token_store, account_store, context,
+        )
 
         vm.load_preferences()
         advanceUntilIdle()
@@ -1263,7 +1323,7 @@ class SettingsViewModelTest {
         vm.load_referral_info()
         advanceUntilIdle()
 
-        assertNull(vm.state.value.referral)
+        assertEquals(ReferralInfoResponse(), vm.state.value.referral)
         assertNull(vm.state.value.error)
     }
 
@@ -1369,7 +1429,7 @@ class SettingsViewModelTest {
         vm.load_profile()
         advanceUntilIdle()
 
-        assertEquals("failed to load profile", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -1379,7 +1439,7 @@ class SettingsViewModelTest {
         vm.update_display_name("name")
         advanceUntilIdle()
 
-        assertEquals("failed to update name", vm.state.value.error)
+        assertEquals("Something went wrong", vm.state.value.error)
     }
 
     @Test
@@ -1440,7 +1500,7 @@ class SettingsViewModelTest {
         val aliases = listOf(
             AliasInfo(id = "a1", encrypted_local_part = "", domain = "astermail.org"),
         )
-        coEvery { settings_api.list_aliases() } returns AliasListResponse(aliases)
+        coEvery { settings_api.list_aliases(any(), any()) } returns AliasListResponse(aliases)
         every { session_key_store.get_identity_key() } returns null
 
         vm.load_aliases()

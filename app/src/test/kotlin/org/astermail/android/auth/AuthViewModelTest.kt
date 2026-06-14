@@ -21,9 +21,13 @@
 
 package org.astermail.android.auth
 
+import android.app.Application
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
+import io.mockk.mockkStatic
+import io.mockk.unmockkStatic
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +36,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.astermail.android.R
 import org.astermail.android.api.ApiError
 import org.astermail.android.crypto.RecoveryKeyResult
 import org.junit.After
@@ -45,22 +50,71 @@ import org.junit.Test
 class AuthViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var test_main: kotlinx.coroutines.MainCoroutineDispatcher
+    private lateinit var application: Application
     private lateinit var repository: AuthRepository
     private lateinit var vm: AuthViewModel
 
     private val fake_signed_in = MutableStateFlow(false)
 
+    private val error_strings = mapOf(
+        R.string.error_invalid_email to "Enter a valid email",
+        R.string.error_password_min_length to "Password must be at least 12 characters",
+        R.string.error_passwords_no_match to "Passwords do not match",
+        R.string.error_invalid_credentials to "Invalid username or password",
+        R.string.error_captcha_failed to "Captcha verification failed. Please try again.",
+        R.string.error_access_denied to "Access denied",
+        R.string.error_account_not_found to "Account not found",
+        R.string.error_no_connection to "Could not connect to the server. Check your internet connection.",
+        R.string.error_server to "Server error. Please try again later.",
+        R.string.error_invalid_request to "Invalid request",
+        R.string.error_timeout to "Connection timed out. Please try again.",
+        R.string.error_ssl to "Secure connection failed. Please try again.",
+        R.string.error_generic to "Something went wrong. Please try again.",
+    )
+
+    private fun mock_dispatchers() {
+        mockkStatic(Dispatchers::class)
+        every { Dispatchers.Main } returns test_main
+        every { Dispatchers.IO } returns dispatcher
+    }
+
+    private fun verify_repo(
+        exactly: Int = -1,
+        atLeast: Int = -1,
+        block: suspend io.mockk.MockKVerificationScope.() -> Unit,
+    ) {
+        unmockkStatic(Dispatchers::class)
+        try {
+            when {
+                exactly >= 0 -> coVerify(exactly = exactly, verifyBlock = block)
+                atLeast >= 0 -> coVerify(atLeast = atLeast, verifyBlock = block)
+                else -> coVerify(verifyBlock = block)
+            }
+        } finally {
+            mock_dispatchers()
+        }
+    }
+
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
-        repository = mockk(relaxed = true) {
-            io.mockk.every { is_signed_in } returns fake_signed_in
+        test_main = Dispatchers.Main
+        mock_dispatchers()
+        application = mockk(relaxed = true)
+        every { application.applicationContext } returns application
+        every { application.getString(any()) } answers {
+            error_strings[firstArg()] ?: ""
         }
-        vm = AuthViewModel(repository)
+        repository = mockk(relaxed = true) {
+            every { is_signed_in } returns fake_signed_in
+        }
+        vm = AuthViewModel(application, repository)
     }
 
     @After
     fun teardown() {
+        unmockkStatic(Dispatchers::class)
         Dispatchers.resetMain()
     }
 
@@ -72,7 +126,7 @@ class AuthViewModelTest {
 
     @Test
     fun `submit_login transitions to loading then success`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "password123!")
         assertEquals(AuthUiState.Loading, vm.ui_state.value)
@@ -85,7 +139,7 @@ class AuthViewModelTest {
 
     @Test
     fun `submit_login with captcha token passes it through`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "pass", "captcha_abc")
         advanceUntilIdle()
@@ -265,7 +319,7 @@ class AuthViewModelTest {
     fun `submit_login ignores duplicate call while loading`() = runTest {
         coEvery { repository.login(any(), any(), any()) } coAnswers {
             kotlinx.coroutines.delay(5000)
-            Result.success(Unit)
+            Result.success(LoginOutcome.Success)
         }
 
         vm.submit_login("user@astermail.org", "pass")
@@ -275,7 +329,7 @@ class AuthViewModelTest {
 
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { repository.login(any(), any(), any()) }
+        verify_repo(exactly = 1) { repository.login(any(), any(), any()) }
     }
 
     @Test
@@ -311,8 +365,8 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("enter a valid email", (state as AuthUiState.Error).message)
-        coVerify(exactly = 0) { repository.register(any(), any(), any()) }
+        assertEquals("Enter a valid email", (state as AuthUiState.Error).message)
+        verify_repo(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
     @Test
@@ -321,7 +375,7 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("enter a valid email", (state as AuthUiState.Error).message)
+        assertEquals("Enter a valid email", (state as AuthUiState.Error).message)
     }
 
     @Test
@@ -330,7 +384,7 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("enter a valid email", (state as AuthUiState.Error).message)
+        assertEquals("Enter a valid email", (state as AuthUiState.Error).message)
     }
 
     @Test
@@ -339,7 +393,7 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("enter a valid email", (state as AuthUiState.Error).message)
+        assertEquals("Enter a valid email", (state as AuthUiState.Error).message)
     }
 
     @Test
@@ -348,8 +402,8 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("password must be at least 12 characters", (state as AuthUiState.Error).message)
-        coVerify(exactly = 0) { repository.register(any(), any(), any()) }
+        assertEquals("Password must be at least 12 characters", (state as AuthUiState.Error).message)
+        verify_repo(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
     @Test
@@ -370,8 +424,8 @@ class AuthViewModelTest {
 
         val state = vm.ui_state.value
         assertTrue(state is AuthUiState.Error)
-        assertEquals("passwords do not match", (state as AuthUiState.Error).message)
-        coVerify(exactly = 0) { repository.register(any(), any(), any()) }
+        assertEquals("Passwords do not match", (state as AuthUiState.Error).message)
+        verify_repo(exactly = 0) { repository.register(any(), any(), any()) }
     }
 
     @Test
@@ -400,7 +454,7 @@ class AuthViewModelTest {
         vm.submit_register("test@astermail.org", "password12345!", "password12345!")
         advanceUntilIdle()
 
-        coVerify(exactly = 1) { repository.register(any(), any(), any()) }
+        verify_repo(exactly = 1) { repository.register(any(), any(), any()) }
     }
 
     @Test
@@ -432,7 +486,7 @@ class AuthViewModelTest {
 
     @Test
     fun `reset_state returns to idle`() = runTest {
-        coEvery { repository.login(any(), any(), any()) } returns Result.success(Unit)
+        coEvery { repository.login(any(), any(), any()) } returns Result.success(LoginOutcome.Success)
 
         vm.submit_login("user@astermail.org", "pass")
         advanceUntilIdle()

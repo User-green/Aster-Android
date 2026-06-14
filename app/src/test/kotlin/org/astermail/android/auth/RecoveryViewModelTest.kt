@@ -21,6 +21,7 @@
 
 package org.astermail.android.auth
 
+import android.app.Application
 import android.util.Base64
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -35,6 +36,7 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import org.astermail.android.R
 import org.astermail.android.api.recovery.InitiateEmailRecoveryResponse
 import org.astermail.android.api.recovery.RecoveryApi
 import org.junit.After
@@ -49,12 +51,27 @@ import org.junit.Test
 class RecoveryViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
+    private lateinit var application: Application
     private lateinit var recovery_api: RecoveryApi
     private lateinit var vm: RecoveryViewModel
+
+    private val strings = mapOf(
+        R.string.error_send_recovery to "Failed to send recovery email",
+        R.string.error_invalid_recovery_code to "Invalid recovery code format",
+        R.string.error_invalid_code to "Invalid recovery code",
+        R.string.error_password_min_length to "Password must be at least 12 characters",
+        R.string.error_passwords_no_match to "Passwords do not match",
+        R.string.error_recovery_failed to "Recovery failed",
+    )
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
+        application = mockk(relaxed = true)
+        every { application.applicationContext } returns application
+        every { application.getString(any()) } answers {
+            strings[firstArg()] ?: ""
+        }
         recovery_api = mockk(relaxed = true)
         mockkStatic(Base64::class)
         every { Base64.encodeToString(any(), any()) } answers {
@@ -63,7 +80,7 @@ class RecoveryViewModelTest {
         every { Base64.decode(any<String>(), any()) } answers {
             java.util.Base64.getDecoder().decode(firstArg<String>())
         }
-        vm = RecoveryViewModel(recovery_api)
+        vm = RecoveryViewModel(application, recovery_api)
     }
 
     @After
@@ -132,7 +149,7 @@ class RecoveryViewModelTest {
         vm.send_recovery_email("user@astermail.org")
         advanceUntilIdle()
 
-        assertEquals("failed to send recovery email", vm.state.value.error)
+        assertEquals("Failed to send recovery email", vm.state.value.error)
     }
 
     @Test
@@ -203,7 +220,7 @@ class RecoveryViewModelTest {
         Thread.sleep(100)
         advanceUntilIdle()
 
-        assertEquals("invalid recovery code", vm.state.value.error)
+        assertEquals("Invalid recovery code", vm.state.value.error)
     }
 
     @Test
