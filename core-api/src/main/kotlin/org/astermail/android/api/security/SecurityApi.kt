@@ -37,12 +37,12 @@ import org.astermail.android.api.ApiError
 
 @Serializable
 data class LoginAlertStatus(
-    val login_alerts_enabled: Boolean = false,
+    val enabled: Boolean = false,
 )
 
 @Serializable
 data class SetLoginAlertRequest(
-    val login_alerts_enabled: Boolean,
+    val enabled: Boolean,
 )
 
 @Serializable
