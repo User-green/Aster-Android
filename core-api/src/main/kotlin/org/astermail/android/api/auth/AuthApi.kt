@@ -76,6 +76,7 @@ data class TotpLoginVerifyRequest(
     val code: String,
     val pending_login_token: String,
     val trust_device: Boolean = false,
+    val remember_me: Boolean = false,
 )
 
 data class TotpVerifyOutcome(

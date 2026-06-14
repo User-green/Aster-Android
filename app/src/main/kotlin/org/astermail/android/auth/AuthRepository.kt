@@ -71,6 +71,7 @@ data class TotpChallenge(
     val password_bytes: ByteArray,
     val salt_bytes: ByteArray,
     val email: String,
+    val remember_me: Boolean,
 )
 
 sealed interface LoginOutcome {
@@ -111,12 +112,14 @@ class AuthRepository @Inject constructor(
         )
         val password_hash_b64 = base64_encode(password_hash_bytes)
 
+        val remember_me = true
+
         val login_result = auth_api.login(
             LoginRequest(
                 user_hash = user_hash,
                 password_hash = password_hash_b64,
                 captcha_token = captcha_token,
-                remember_me = true,
+                remember_me = remember_me,
             ),
             trusted_device_token = trusted_token,
         )
@@ -131,6 +134,7 @@ class AuthRepository @Inject constructor(
                         password_bytes = password_bytes,
                         salt_bytes = salt_bytes,
                         email = normalized,
+                        remember_me = remember_me,
                     ),
                 )
             }
@@ -147,6 +151,7 @@ class AuthRepository @Inject constructor(
                 code = code,
                 pending_login_token = challenge.pending_login_token,
                 trust_device = trust_device,
+                remember_me = challenge.remember_me,
             ),
         )
         if (trust_device) {

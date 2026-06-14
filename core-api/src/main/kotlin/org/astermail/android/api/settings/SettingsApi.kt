@@ -303,10 +303,10 @@ data class UpdateDomainRequest(
 
 @Serializable
 data class DnsRecord(
-    val type: String,
-    val name: String,
+    @SerialName("record_type") val type: String,
+    @SerialName("host") val name: String,
     val value: String,
-    val verified: Boolean = false,
+    @SerialName("is_verified") val verified: Boolean = false,
 )
 
 @Serializable

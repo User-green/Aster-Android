@@ -31,6 +31,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.astermail.android.api.ApiClient
 import org.astermail.android.api.ApiError
@@ -81,13 +82,13 @@ data class AuditEvent(
     val severity: String = "",
     val ip_address: String? = null,
     val user_agent: String? = null,
-    val created_at: String = "",
-    val details: String? = null,
+    @SerialName("timestamp") val created_at: String = "",
+    @SerialName("description_encrypted") val details: String? = null,
 )
 
 @Serializable
 data class AuditLogResponse(
-    val events: List<AuditEvent> = emptyList(),
+    @SerialName("entries") val events: List<AuditEvent> = emptyList(),
     val total: Long = 0,
 )
 

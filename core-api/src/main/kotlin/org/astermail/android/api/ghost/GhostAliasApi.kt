@@ -81,6 +81,9 @@ data class CreateGhostAliasResponse(
     val grace_expires_at: String = "",
 )
 
+@Serializable
+data class ExtendGhostAliasRequest(val additional_days: Int = 30)
+
 interface GhostAliasApi {
     suspend fun list_ghost_aliases(): GhostAliasListResponse
     suspend fun create_ghost_alias(request: CreateGhostAliasRequest): CreateGhostAliasResponse
@@ -120,7 +123,7 @@ class GhostAliasApiImpl(private val client: ApiClient) : GhostAliasApi {
         val response = client.http.post("${client.base_url}$base/$alias_id/extend") {
             contentType(ContentType.Application.Json)
             client.get_csrf()?.let { header("X-CSRF-Token", it) }
-            setBody("{}")
+            setBody(ExtendGhostAliasRequest())
         }
         if (response.status.value !in 200..299) {
             throw client.map_http_status(response.status.value, "")

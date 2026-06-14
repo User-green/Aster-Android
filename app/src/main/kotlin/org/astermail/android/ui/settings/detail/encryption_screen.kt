@@ -460,132 +460,153 @@ fun EncryptionScreen(
 
         v_gap(AsterSpacing.lg)
         section_label(stringResource(R.string.storage_format))
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
-        ) {
-            storage_format_card(
+        if (prefs == null) {
+            Box(
+                modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+            }
+        } else {
+            Column(
                 modifier = Modifier.fillMaxWidth(),
-                label = stringResource(R.string.storage_format_aster),
-                subtitle = stringResource(R.string.storage_format_aster_sub),
-                image_url = "https://app.astermail.org/settings/aster_server.webp",
-                selected = prefs?.storage_format != "ipfs",
-                on_select = { toggle { it.copy(storage_format = "aster") } },
-            )
-            storage_format_card(
-                modifier = Modifier.fillMaxWidth(),
-                label = stringResource(R.string.storage_format_ipfs),
-                subtitle = stringResource(R.string.storage_format_ipfs_sub),
-                image_url = "https://app.astermail.org/settings/decentralized.webp",
-                selected = prefs?.storage_format == "ipfs",
-                on_select = { toggle { it.copy(storage_format = "ipfs") } },
-            )
+                verticalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
+            ) {
+                storage_format_card(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.storage_format_aster),
+                    subtitle = stringResource(R.string.storage_format_aster_sub),
+                    image_url = "https://app.astermail.org/settings/aster_server.webp",
+                    selected = prefs.storage_format != "ipfs",
+                    on_select = { toggle { it.copy(storage_format = "aster") } },
+                )
+                storage_format_card(
+                    modifier = Modifier.fillMaxWidth(),
+                    label = stringResource(R.string.storage_format_ipfs),
+                    subtitle = stringResource(R.string.storage_format_ipfs_sub),
+                    image_url = "https://app.astermail.org/settings/decentralized.webp",
+                    selected = prefs.storage_format == "ipfs",
+                    on_select = { toggle { it.copy(storage_format = "ipfs") } },
+                )
+            }
         }
 
         v_gap(AsterSpacing.lg)
         section_label(stringResource(R.string.encryption_behavior))
         AsterCard(modifier = Modifier.fillMaxWidth()) {
-            detail_row(
-                title = stringResource(R.string.auto_discover_keys),
-                subtitle = stringResource(R.string.auto_discover_keys_sub),
-                info_title = "Auto-discover Keys",
-                info_description = "Automatically fetches encryption keys for your contacts so you can send them encrypted mail without any manual setup.",
-                trailing = {
-                    Switch(
-                        checked = state.encryption_settings?.auto_discover_keys != false,
-                        onCheckedChange = { vm.toggle_auto_discover_keys() },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.encrypt_by_default),
-                subtitle = stringResource(R.string.encrypt_by_default_sub),
-                info_title = "Encrypt by Default",
-                info_description = "Automatically encrypts outgoing emails when a recipient's public key is available. No need to toggle encryption per message.",
-                trailing = {
-                    Switch(
-                        checked = state.encryption_settings?.encrypt_by_default == true,
-                        onCheckedChange = { vm.toggle_encrypt_by_default() },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.require_encryption),
-                subtitle = stringResource(R.string.require_encryption_sub),
-                info_title = "Require Encryption",
-                info_description = "Only send emails that can be encrypted end-to-end. If a recipient doesn't have a PGP key, the message won't send. Only turn this on if you never email people outside of PGP.",
-                trailing = {
-                    Switch(
-                        checked = prefs?.require_encryption == true,
-                        onCheckedChange = { toggle { it.copy(require_encryption = !it.require_encryption) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.show_encryption_indicators),
-                subtitle = stringResource(R.string.show_encryption_indicators_sub),
-                info_title = "Encryption Indicators",
-                info_description = "Shows a lock icon on emails to tell you whether a message is encrypted, signed, or neither. Handy for knowing what's protected at a glance.",
-                trailing = {
-                    Switch(
-                        checked = prefs?.show_encryption_indicators != false,
-                        onCheckedChange = { toggle { it.copy(show_encryption_indicators = !it.show_encryption_indicators) } },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.publish_to_wkd),
-                subtitle = stringResource(R.string.publish_to_wkd_sub),
-                info_title = "What is WKD?",
-                info_description = "A standard that lets email apps like Thunderbird or Proton automatically find your public key. People can send you encrypted mail without you needing to share your key manually.",
-                trailing = {
-                    Switch(
-                        checked = state.wkd_status?.published == true,
-                        onCheckedChange = { vm.toggle_wkd_publishing() },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
-            AsterDivider()
-            detail_row(
-                title = stringResource(R.string.publish_to_keyservers),
-                subtitle = stringResource(R.string.publish_to_keyservers_sub),
-                info_title = "What are Keyservers?",
-                info_description = "Public directories where PGP keys are searchable by email. Publishing here lets anyone find your key. Heads up: most keyservers don't let you fully remove a key once it's published.",
-                trailing = {
-                    Switch(
-                        checked = state.keyserver_status?.published == true,
-                        onCheckedChange = { vm.toggle_keyserver_publishing() },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                },
-            )
+            val enc = state.encryption_settings
+            val wkd = state.wkd_status
+            val ks = state.keyserver_status
+            if (prefs == null || enc == null || wkd == null || ks == null) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+                }
+            } else {
+                detail_row(
+                    title = stringResource(R.string.auto_discover_keys),
+                    subtitle = stringResource(R.string.auto_discover_keys_sub),
+                    info_title = "Auto-discover Keys",
+                    info_description = "Automatically fetches encryption keys for your contacts so you can send them encrypted mail without any manual setup.",
+                    trailing = {
+                        Switch(
+                            checked = enc.auto_discover_keys != false,
+                            onCheckedChange = { vm.toggle_auto_discover_keys() },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.encrypt_by_default),
+                    subtitle = stringResource(R.string.encrypt_by_default_sub),
+                    info_title = "Encrypt by Default",
+                    info_description = "Automatically encrypts outgoing emails when a recipient's public key is available. No need to toggle encryption per message.",
+                    trailing = {
+                        Switch(
+                            checked = enc.encrypt_by_default == true,
+                            onCheckedChange = { vm.toggle_encrypt_by_default() },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.require_encryption),
+                    subtitle = stringResource(R.string.require_encryption_sub),
+                    info_title = "Require Encryption",
+                    info_description = "Only send emails that can be encrypted end-to-end. If a recipient doesn't have a PGP key, the message won't send. Only turn this on if you never email people outside of PGP.",
+                    trailing = {
+                        Switch(
+                            checked = prefs.require_encryption == true,
+                            onCheckedChange = { toggle { it.copy(require_encryption = !it.require_encryption) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.show_encryption_indicators),
+                    subtitle = stringResource(R.string.show_encryption_indicators_sub),
+                    info_title = "Encryption Indicators",
+                    info_description = "Shows a lock icon on emails to tell you whether a message is encrypted, signed, or neither. Handy for knowing what's protected at a glance.",
+                    trailing = {
+                        Switch(
+                            checked = prefs.show_encryption_indicators != false,
+                            onCheckedChange = { toggle { it.copy(show_encryption_indicators = !it.show_encryption_indicators) } },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.publish_to_wkd),
+                    subtitle = stringResource(R.string.publish_to_wkd_sub),
+                    info_title = "What is WKD?",
+                    info_description = "A standard that lets email apps like Thunderbird or Proton automatically find your public key. People can send you encrypted mail without you needing to share your key manually.",
+                    trailing = {
+                        Switch(
+                            checked = wkd.published == true,
+                            onCheckedChange = { vm.toggle_wkd_publishing() },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+                AsterDivider()
+                detail_row(
+                    title = stringResource(R.string.publish_to_keyservers),
+                    subtitle = stringResource(R.string.publish_to_keyservers_sub),
+                    info_title = "What are Keyservers?",
+                    info_description = "Public directories where PGP keys are searchable by email. Publishing here lets anyone find your key. Heads up: most keyservers don't let you fully remove a key once it's published.",
+                    trailing = {
+                        Switch(
+                            checked = ks.published == true,
+                            onCheckedChange = { vm.toggle_keyserver_publishing() },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
+                        )
+                    },
+                )
+            }
         }
 
         v_gap(AsterSpacing.xxl)
