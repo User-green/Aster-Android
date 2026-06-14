@@ -76,6 +76,7 @@ import org.astermail.android.design.components.AsterButton
 import org.astermail.android.design.components.AsterTextField
 import org.astermail.android.ui.settings.mail_rules.action_id
 import org.astermail.android.ui.settings.mail_rules.field_id
+import kotlin.math.roundToInt
 
 data class picker_section_spec(
     @StringRes val title_res: Int,
@@ -438,6 +439,37 @@ fun numeric_value_picker(
                         else -> 1L
                     }
                     on_confirm((v * multiplier).toLong())
+                    on_dismiss()
+                },
+            )
+            Spacer(Modifier.height(AsterSpacing.md))
+        }
+    }
+}
+
+@Composable
+fun decimal_value_picker(
+    on_dismiss: () -> Unit,
+    title: String,
+    initial: Double,
+    on_confirm: (Double) -> Unit,
+) {
+    var value by remember { mutableStateOf("%.1f".format(java.util.Locale.US, initial)) }
+    base_sheet(on_dismiss = on_dismiss, title = title) {
+        Column(modifier = Modifier.padding(horizontal = AsterSpacing.lg)) {
+            AsterTextField(
+                value = value,
+                onValueChange = { v -> value = v.filter { it.isDigit() || it == '.' } },
+                placeholder = "0.0",
+                modifier = Modifier.testTag("decimal_input"),
+            )
+            Spacer(Modifier.height(AsterSpacing.lg))
+            AsterButton(
+                label = stringResource(R.string.mail_rules_confirm),
+                onClick = {
+                    val raw = value.toDoubleOrNull() ?: 0.0
+                    val rounded = (raw * 10.0).roundToInt() / 10.0
+                    on_confirm(rounded)
                     on_dismiss()
                 },
             )

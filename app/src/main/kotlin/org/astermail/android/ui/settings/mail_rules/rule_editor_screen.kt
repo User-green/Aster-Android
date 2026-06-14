@@ -84,6 +84,7 @@ import org.astermail.android.mail_rules.MailRulesViewModel
 import org.astermail.android.settings.SettingsViewModel
 import org.astermail.android.ui.settings.mail_rules.pickers.boolean_value_picker
 import org.astermail.android.ui.settings.mail_rules.pickers.color_picker
+import org.astermail.android.ui.settings.mail_rules.pickers.decimal_value_picker
 import org.astermail.android.ui.settings.mail_rules.pickers.field_picker
 import org.astermail.android.ui.settings.mail_rules.pickers.folder_picker
 import org.astermail.android.ui.settings.mail_rules.pickers.header_value_picker
@@ -822,12 +823,11 @@ private fun value_picker_for(
             is_size = false,
             on_confirm = { on_set(condition.copy(value = it)) },
         )
-        is Condition.SpamScore -> numeric_value_picker(
+        is Condition.SpamScore -> decimal_value_picker(
             on_dismiss = on_dismiss,
             title = stringResource(R.string.mail_rules_field_spam_score),
-            initial = condition.value.toLong(),
-            is_size = false,
-            on_confirm = { on_set(condition.copy(value = it.toDouble())) },
+            initial = condition.value,
+            on_confirm = { on_set(condition.copy(value = it)) },
         )
         is Condition.DateReceived -> numeric_value_picker(
             on_dismiss = on_dismiss,

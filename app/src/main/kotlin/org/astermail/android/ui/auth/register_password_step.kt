@@ -94,7 +94,7 @@ fun RegisterPasswordStep(
     val confirm_focus = remember { androidx.compose.ui.focus.FocusRequester() }
 
     val password = state.password.value
-    val length_ok = password.length >= 8
+    val length_ok = password.length >= 12
     val upper_ok = password.any { it.isUpperCase() }
     val lower_ok = password.any { it.isLowerCase() }
     val number_ok = password.any { it.isDigit() }

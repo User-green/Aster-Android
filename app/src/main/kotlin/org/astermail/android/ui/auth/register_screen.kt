@@ -21,6 +21,7 @@
 
 package org.astermail.android.ui.auth
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -92,6 +93,8 @@ fun RegisterScreen(
             else -> { }
         }
     }
+
+    BackHandler(enabled = state.step.value != RegisterStep.email) { handle_back() }
 
     Box(
         modifier = Modifier

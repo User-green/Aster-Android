@@ -34,7 +34,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,8 +65,12 @@ fun RecoveryEmailScreen(on_back: () -> Unit) {
 
     LaunchedEffect(Unit) { vm.load_recovery_email() }
 
-    var email by remember(state.recovery_email_address) {
-        mutableStateOf(state.recovery_email_address ?: "")
+    var email by rememberSaveable { mutableStateOf("") }
+
+    LaunchedEffect(state.recovery_email_address) {
+        if (email.isBlank() && !state.recovery_email_address.isNullOrBlank()) {
+            email = state.recovery_email_address!!
+        }
     }
 
     LaunchedEffect(state.save_status) {

@@ -48,7 +48,7 @@ enum class TwoFactorMode {
 }
 
 data class TwoFactorUiState(
-    val is_loading: Boolean = false,
+    val is_loading: Boolean = true,
     val is_busy: Boolean = false,
     val error: String? = null,
     val enabled: Boolean = false,

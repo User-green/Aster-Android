@@ -1444,7 +1444,11 @@ fun LanguageScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
             ) {
                 AsterSecondaryButton(
                     label = stringResource(R.string.set_from_system),
-                    onClick = { save("en") },
+                    onClick = {
+                        val device_language = java.util.Locale.getDefault().language
+                        val supported = languages.any { it.first == device_language }
+                        save(if (supported) device_language else "en")
+                    },
                 )
             }
         }
