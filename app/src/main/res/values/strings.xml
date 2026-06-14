@@ -571,6 +571,7 @@
     <string name="drawer_labels">Labels</string>
     <string name="drawer_aliases">Aliases</string>
     <string name="no_folders_yet">No folders yet</string>
+    <string name="folder_decrypt_failed">Folder (decryption failed)</string>
     <string name="no_labels_yet">No labels yet</string>
     <string name="no_aliases_yet">No aliases yet</string>
     <string name="create_folder">Create Folder</string>
