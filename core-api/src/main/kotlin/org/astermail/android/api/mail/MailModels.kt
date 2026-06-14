@@ -114,6 +114,8 @@ data class DraftItem(
     val version: Int = 1,
     val content_hash: String = "",
     val size_bytes: Long = 0,
+    val has_attachments: Boolean = false,
+    val attachment_count: Int = 0,
     val created_at: String? = null,
     val updated_at: String? = null,
     val expires_at: String? = null,

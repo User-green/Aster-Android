@@ -214,7 +214,7 @@ fun CustomizeToolbarScreen(
                                 modifier = Modifier.size(18.dp).background(colors.accent_blue, CircleShape),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                Text("âœ“", color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                Text("✓", color = androidx.compose.ui.graphics.Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

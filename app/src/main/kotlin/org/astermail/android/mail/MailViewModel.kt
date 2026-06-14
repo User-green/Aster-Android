@@ -1011,12 +1011,13 @@ class MailViewModel @Inject constructor(
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
+        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("spam", "inbox"))
         viewModelScope.launch {
-            repository.unmark_spam(item_ids).fold(
+            repository.unmark_spam(item_ids, raw_items).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.moved_to_inbox),
@@ -1048,7 +1049,8 @@ class MailViewModel @Inject constructor(
 
     fun unarchive_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        viewModelScope.launch { repository.unarchive(item_ids) }
+        val raw_items = lookup_raw_items(item_ids)
+        viewModelScope.launch { repository.unarchive(item_ids, raw_items) }
     }
 
     fun archive_backend_only(item_ids: List<String>) {
@@ -1071,24 +1073,27 @@ class MailViewModel @Inject constructor(
 
     fun restore_trash_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        viewModelScope.launch { repository.restore_trash(item_ids) }
+        val raw_items = lookup_raw_items(item_ids)
+        viewModelScope.launch { repository.restore_trash(item_ids, raw_items) }
     }
 
     fun unmark_spam_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        viewModelScope.launch { repository.unmark_spam(item_ids) }
+        val raw_items = lookup_raw_items(item_ids)
+        viewModelScope.launch { repository.unmark_spam(item_ids, raw_items) }
     }
 
     fun unarchive(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
+        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("inbox", "archive"))
         viewModelScope.launch {
-            repository.unarchive(item_ids).fold(
+            repository.unarchive(item_ids, raw_items).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.moved_to_inbox),
@@ -1108,12 +1113,13 @@ class MailViewModel @Inject constructor(
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
+        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("inbox", "trash"))
         viewModelScope.launch {
-            repository.restore_trash(item_ids).fold(
+            repository.restore_trash(item_ids, raw_items).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.restored_to_inbox),
@@ -1156,6 +1162,7 @@ class MailViewModel @Inject constructor(
 
     fun mark_read_bulk(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
+        val raw_items = lookup_raw_items(item_ids)
         item_ids.forEach { read_overrides[it] = true }
         _inbox_state.value = _inbox_state.value.copy(
             items = _inbox_state.value.items.map {
@@ -1168,7 +1175,7 @@ class MailViewModel @Inject constructor(
         }
         invalidate_caches(listOf("starred"))
         viewModelScope.launch {
-            repository.mark_read_bulk(item_ids).fold(
+            repository.mark_read_bulk(item_ids, raw_items).fold(
                 onSuccess = { emit_toast(context.getString(R.string.marked_read_count, item_ids.size)) },
                 onFailure = { emit_toast(context.getString(R.string.failed_mark_read)) },
             )

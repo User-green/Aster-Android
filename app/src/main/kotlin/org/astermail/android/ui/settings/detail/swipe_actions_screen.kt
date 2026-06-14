@@ -216,7 +216,7 @@ private fun swipe_action_option(
                 modifier = Modifier.size(18.dp).background(colors.accent_blue, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Text("âœ“", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                Text("✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
