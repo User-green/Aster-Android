@@ -1239,8 +1239,24 @@ class SettingsViewModel @Inject constructor(
                 }
                 val still_all_failed = response.labels.any { !it.encrypted_name.isNullOrBlank() } &&
                     decrypted.all { it.encrypted_name.isNullOrBlank() }
+                if (org.astermail.android.BuildConfig.DEBUG) {
+                    val decrypt_failed = response.labels.indices.count { i ->
+                        !response.labels[i].encrypted_name.isNullOrBlank() &&
+                            decrypted[i].encrypted_name.isNullOrBlank()
+                    }
+                    android.util.Log.i(
+                        "SettingsVM",
+                        "load_labels received=${response.labels.size} decrypt_failed=$decrypt_failed " +
+                            "all_failed=$still_all_failed identity_key=${session_key_store.get_identity_key() != null}",
+                    )
+                }
                 if (still_all_failed) {
-                    _state.value = _state.value.copy(is_loading = false)
+                    val had_readable_labels = _state.value.labels.any { !it.encrypted_name.isNullOrBlank() }
+                    _state.value = if (had_readable_labels) {
+                        _state.value.copy(is_loading = false)
+                    } else {
+                        _state.value.copy(labels = decrypted, is_loading = false)
+                    }
                     return@launch
                 }
                 val server_tokens = decrypted.map { it.label_token }.toSet()
@@ -1260,6 +1276,7 @@ class SettingsViewModel @Inject constructor(
                     is_loading = false,
                 )
             } catch (t: Throwable) {
+                if (org.astermail.android.BuildConfig.DEBUG) android.util.Log.w("SettingsVM", "load_labels failed", t)
                 _state.value = _state.value.copy(
                     is_loading = false,
                     error = t.message ?: context.getString(R.string.something_went_wrong),
