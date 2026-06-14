@@ -30,6 +30,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import org.astermail.android.api.ApiClient
 import org.astermail.android.api.ApiError
@@ -37,14 +38,18 @@ import org.astermail.android.api.ApiError
 @Serializable
 data class ApiKeyInfo(
     val id: String = "",
-    val name: String = "",
+    val name_encrypted: String = "",
+    val name_nonce: String = "",
+    @SerialName("key_prefix")
     val prefix: String = "",
     val created_at: String? = null,
     val last_used_at: String? = null,
+    val decrypted_name: String = "",
 )
 
 @Serializable
 data class ApiKeyListResponse(
+    @SerialName("keys")
     val api_keys: List<ApiKeyInfo> = emptyList(),
 )
 
@@ -64,10 +69,13 @@ data class CreateApiKeyResponse(
 @Serializable
 data class WebhookInfo(
     val id: String = "",
-    val url: String = "",
+    val url_encrypted: String = "",
+    val url_nonce: String = "",
     val events: List<String> = emptyList(),
+    @SerialName("is_active")
     val enabled: Boolean = true,
     val created_at: String? = null,
+    val decrypted_url: String = "",
 )
 
 @Serializable

@@ -152,20 +152,22 @@ fun SecurityScreen(
 
     val sec = state.security_status
     val prefs = state.preferences
+    val recovery_email_verified = state.recovery_email_verified
+    val hardware_keys_count = state.hardware_keys.size
     val score_loaded = sec != null && prefs != null && state.login_alerts_enabled != null
 
     val score = if (!score_loaded) null else run {
         var s = 0
         if (sec?.totp_enabled == true) s++
         if (state.login_alerts_enabled == true) s++
-        if (sec?.recovery_email_verified == true) s++
+        if (recovery_email_verified) s++
         if (prefs?.block_tracking_pixels == true) s++
         if (prefs?.block_external_images == true) s++
         if (prefs?.block_tracking_links == true) s++
         if (prefs?.warn_suspicious_links == true) s++
         if (prefs?.strip_exif == true) s++
         if (prefs?.send_read_receipts == false) s++
-        if ((sec?.hardware_keys_count ?: 0) > 0) s++
+        if (hardware_keys_count > 0) s++
         s
     }
 
@@ -198,12 +200,12 @@ fun SecurityScreen(
     }
     val recovery_email_sub = when {
         sec == null -> stringResource(R.string.backup_email_short)
-        sec.recovery_email_verified -> {
+        recovery_email_verified -> {
             val addr = state.recovery_email_address
             if (!addr.isNullOrBlank()) "$addr · ${stringResource(R.string.recovery_email_status_verified)}"
             else stringResource(R.string.recovery_email_status_verified)
         }
-        sec.recovery_email_set -> {
+        state.recovery_email_set -> {
             val addr = state.recovery_email_address
             if (!addr.isNullOrBlank()) "$addr · ${stringResource(R.string.recovery_email_status_unverified)}"
             else stringResource(R.string.recovery_email_status_unverified)
@@ -295,14 +297,14 @@ fun SecurityScreen(
                     Column(modifier = Modifier.padding(top = AsterSpacing.md)) {
                         score_checklist_row("Two-factor authentication", sec?.totp_enabled == true, colors) { on_open("two_factor") }
                         score_checklist_row("Login alerts", state.login_alerts_enabled == true, colors) { vm.set_login_alerts(state.login_alerts_enabled != true) }
-                        score_checklist_row("Recovery email verified", sec?.recovery_email_verified == true, colors) { on_open("recovery_email") }
+                        score_checklist_row("Recovery email verified", recovery_email_verified, colors) { on_open("recovery_email") }
                         score_checklist_row("Block tracking pixels", prefs?.block_tracking_pixels == true, colors) { toggle { it.copy(block_tracking_pixels = it.block_tracking_pixels != true) } }
                         score_checklist_row("Block remote images", prefs?.block_external_images == true, colors) { toggle { it.copy(block_external_images = it.block_external_images != true) } }
                         score_checklist_row("Block tracking links", prefs?.block_tracking_links == true, colors) { toggle { it.copy(block_tracking_links = it.block_tracking_links != true) } }
                         score_checklist_row("Warn on suspicious links", prefs?.warn_suspicious_links == true, colors) { toggle { it.copy(warn_suspicious_links = it.warn_suspicious_links != true) } }
                         score_checklist_row("Strip EXIF on compose", prefs?.strip_exif == true, colors) { toggle { it.copy(strip_exif = it.strip_exif != true) } }
                         score_checklist_row("Read receipts off", prefs?.send_read_receipts == false, colors) { toggle { it.copy(send_read_receipts = it.send_read_receipts != false) } }
-                        score_checklist_row("Passkey registered", (sec?.hardware_keys_count ?: 0) > 0, colors) { on_open("encryption") }
+                        score_checklist_row("Passkey registered", hardware_keys_count > 0, colors) { on_open("encryption") }
                     }
                 }
             }
@@ -352,10 +354,10 @@ fun SecurityScreen(
                 on_click = { on_open("sessions") },
             )
             AsterDivider()
-            if (sec != null && sec.hardware_keys_count > 0) {
+            if (hardware_keys_count > 0) {
                 detail_row(
                     title = stringResource(R.string.passkeys_security_keys),
-                    subtitle = "${sec.hardware_keys_count} passkey${if (sec.hardware_keys_count == 1) "" else "s"} registered",
+                    subtitle = "$hardware_keys_count passkey${if (hardware_keys_count == 1) "" else "s"} registered",
                     icon = Icons.Outlined.Key,
                     trailing = {
                         AsterIconButton(

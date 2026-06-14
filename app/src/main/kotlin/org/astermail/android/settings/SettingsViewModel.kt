@@ -794,11 +794,14 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val status = settings_api.get_security_status()
-                _state.value = _state.value.copy(
-                    security_status = status,
-                    recovery_email_set = status.recovery_email_set,
-                    recovery_email_verified = status.recovery_email_verified,
-                )
+                _state.update {
+                    it.copy(
+                        security_status = status.copy(
+                            recovery_email_set = it.recovery_email_set,
+                            recovery_email_verified = it.recovery_email_verified,
+                        ),
+                    )
+                }
             } catch (t: Throwable) {
                 if (org.astermail.android.BuildConfig.DEBUG) android.util.Log.w("SettingsVM", "load_security_status", t)
             }
@@ -1925,8 +1928,20 @@ class SettingsViewModel @Inject constructor(
             _state.value = _state.value.copy(is_loading = true, error = null)
             try {
                 val response = developer_api.list_api_keys()
+                val decrypted = response.api_keys.map { key ->
+                    val name = if (key.name_encrypted.isNotBlank() && key.name_nonce.isNotBlank()) {
+                        try {
+                            decrypt_alias_field(key.name_encrypted, key.name_nonce)
+                        } catch (_: Throwable) {
+                            context.getString(R.string.api_key_default_name)
+                        }
+                    } else {
+                        context.getString(R.string.api_key_default_name)
+                    }
+                    key.copy(decrypted_name = name)
+                }
                 _state.value = _state.value.copy(
-                    api_keys = response.api_keys,
+                    api_keys = decrypted,
                     is_loading = false,
                 )
             } catch (t: Throwable) {
@@ -1965,7 +1980,19 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val response = developer_api.list_webhooks()
-                _state.value = _state.value.copy(webhooks = response.webhooks)
+                val decrypted = response.webhooks.map { hook ->
+                    val url = if (hook.url_encrypted.isNotBlank() && hook.url_nonce.isNotBlank()) {
+                        try {
+                            decrypt_alias_field(hook.url_encrypted, hook.url_nonce)
+                        } catch (_: Throwable) {
+                            ""
+                        }
+                    } else {
+                        ""
+                    }
+                    hook.copy(decrypted_url = url)
+                }
+                _state.value = _state.value.copy(webhooks = decrypted)
             } catch (_: Throwable) {
             }
         }

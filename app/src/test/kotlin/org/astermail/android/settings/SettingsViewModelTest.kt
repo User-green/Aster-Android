@@ -513,7 +513,7 @@ class SettingsViewModelTest {
     @Test
     fun `load_api_keys populates api keys`() = runTest {
         val keys = listOf(
-            ApiKeyInfo(id = "k1", name = "My Key", prefix = "ak_"),
+            ApiKeyInfo(id = "k1", prefix = "ak_"),
         )
         coEvery { developer_api.list_api_keys() } returns ApiKeyListResponse(keys)
 
@@ -521,14 +521,14 @@ class SettingsViewModelTest {
         advanceUntilIdle()
 
         assertEquals(1, vm.state.value.api_keys.size)
-        assertEquals("My Key", vm.state.value.api_keys[0].name)
+        assertEquals("ak_", vm.state.value.api_keys[0].prefix)
     }
 
     @Test
     fun `revoke_api_key removes from list`() = runTest {
         val keys = listOf(
-            ApiKeyInfo(id = "k1", name = "Key1"),
-            ApiKeyInfo(id = "k2", name = "Key2"),
+            ApiKeyInfo(id = "k1"),
+            ApiKeyInfo(id = "k2"),
         )
         coEvery { developer_api.list_api_keys() } returns ApiKeyListResponse(keys)
 
@@ -622,7 +622,7 @@ class SettingsViewModelTest {
     @Test
     fun `load_webhooks populates webhooks`() = runTest {
         val hooks = listOf(
-            WebhookInfo(id = "w1", url = "https://example.com/hook"),
+            WebhookInfo(id = "w1"),
         )
         coEvery { developer_api.list_webhooks() } returns WebhookListResponse(hooks)
 
@@ -1202,7 +1202,7 @@ class SettingsViewModelTest {
 
     @Test
     fun `revoke_api_key error does not modify list`() = runTest {
-        val keys = listOf(ApiKeyInfo(id = "k1", name = "Key1"))
+        val keys = listOf(ApiKeyInfo(id = "k1"))
         coEvery { developer_api.list_api_keys() } returns ApiKeyListResponse(keys)
         coEvery { developer_api.revoke_api_key("k1") } throws RuntimeException("error")
 

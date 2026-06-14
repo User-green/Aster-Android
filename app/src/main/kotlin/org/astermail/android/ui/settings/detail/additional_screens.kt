@@ -1114,7 +1114,7 @@ fun ApiKeysScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
             AsterCard(modifier = Modifier.fillMaxWidth()) {
                 state.api_keys.forEachIndexed { idx, k ->
                     detail_row(
-                        title = k.name,
+                        title = k.decrypted_name.ifBlank { stringResource(R.string.api_key_default_name) },
                         subtitle = "${k.prefix}... - created ${k.created_at ?: ""}",
                         icon = Icons.Outlined.Api,
                         on_click = {},

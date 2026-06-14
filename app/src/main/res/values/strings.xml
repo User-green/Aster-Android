@@ -1324,6 +1324,7 @@
     <string name="api_keys_count">%d keys</string>
     <string name="generate_new_key">Generate new key</string>
     <string name="mobile_key">Mobile key</string>
+    <string name="api_key_default_name">API key</string>
 
     <!-- Integrations -->
     <string name="integrations">Integrations</string>

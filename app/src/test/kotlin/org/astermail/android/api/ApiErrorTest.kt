@@ -333,8 +333,10 @@ class ApiErrorTest {
     fun `ApiKeyInfo defaults`() {
         val info = ApiKeyInfo()
         assertEquals("", info.id)
-        assertEquals("", info.name)
+        assertEquals("", info.name_encrypted)
+        assertEquals("", info.name_nonce)
         assertEquals("", info.prefix)
+        assertEquals("", info.decrypted_name)
         assertNull(info.created_at)
         assertNull(info.last_used_at)
     }
@@ -343,13 +345,14 @@ class ApiErrorTest {
     fun `ApiKeyInfo with all fields`() {
         val info = ApiKeyInfo(
             id = "ak1",
-            name = "My API Key",
+            name_encrypted = "ZW5j",
+            name_nonce = "bm9uY2U",
             prefix = "ast_",
             created_at = "2026-04-01T00:00:00Z",
             last_used_at = "2026-04-26T10:00:00Z",
         )
         assertEquals("ak1", info.id)
-        assertEquals("My API Key", info.name)
+        assertEquals("ZW5j", info.name_encrypted)
         assertEquals("ast_", info.prefix)
     }
 
@@ -398,7 +401,9 @@ class ApiErrorTest {
     fun `WebhookInfo defaults`() {
         val info = WebhookInfo()
         assertEquals("", info.id)
-        assertEquals("", info.url)
+        assertEquals("", info.url_encrypted)
+        assertEquals("", info.url_nonce)
+        assertEquals("", info.decrypted_url)
         assertTrue(info.events.isEmpty())
         assertTrue(info.enabled)
         assertNull(info.created_at)
@@ -408,20 +413,21 @@ class ApiErrorTest {
     fun `WebhookInfo with all fields`() {
         val info = WebhookInfo(
             id = "wh1",
-            url = "https://example.com/webhook",
+            url_encrypted = "ZW5j",
+            url_nonce = "bm9uY2U",
             events = listOf("mail.received", "mail.sent"),
             enabled = false,
             created_at = "2026-04-01T00:00:00Z",
         )
         assertEquals("wh1", info.id)
-        assertEquals("https://example.com/webhook", info.url)
+        assertEquals("ZW5j", info.url_encrypted)
         assertEquals(2, info.events.size)
         assertFalse(info.enabled)
     }
 
     @Test
     fun `WebhookInfo with empty events`() {
-        val info = WebhookInfo(id = "wh1", url = "https://x.com", events = emptyList())
+        val info = WebhookInfo(id = "wh1", url_encrypted = "ZW5j", events = emptyList())
         assertTrue(info.events.isEmpty())
     }
 
