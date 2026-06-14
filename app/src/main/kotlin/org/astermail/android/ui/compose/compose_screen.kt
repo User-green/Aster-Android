@@ -252,10 +252,11 @@ fun ComposeScreen(
         options.toList()
     }
 
-    val alias_hash_map = remember(settings_state.aliases, settings_state.custom_domain_addresses) {
+    val alias_hash_map = remember(settings_state.aliases, settings_state.custom_domain_addresses, settings_state.ghost_aliases) {
         val map = mutableMapOf<String, String>()
         settings_state.aliases.forEach { map[it.address] = it.alias_address_hash }
         settings_state.custom_domain_addresses.forEach { map[it.address] = it.local_part_hash }
+        settings_state.ghost_aliases.forEach { map[it.address] = it.alias_address_hash }
         map.toMap()
     }
 
@@ -820,6 +821,7 @@ fun ComposeScreen(
         snapshot_subject: String = subject,
         snapshot_from: String = from_alias,
         suppress_branding: Boolean = false,
+        forward_original_mail_id: String? = null,
     ) {
         if (snapshot_to.isEmpty()) {
             is_sending = false
@@ -841,6 +843,7 @@ fun ComposeScreen(
                 attachments = attachment_payloads,
                 sender_alias_hash = if (snapshot_from != user_email) alias_hash_map[snapshot_from]?.takeIf { it.isNotBlank() } else null,
                 suppress_branding = suppress_branding,
+                forward_original_mail_id = forward_original_mail_id,
             )
             result.fold(
                 onSuccess = {
@@ -899,6 +902,7 @@ fun ComposeScreen(
         val snap_bcc = bcc_chips.toList()
         val snap_subject = subject
         val snap_from = from_alias
+        val forward_original_mail_id = if (mode == "forward") reply_to?.takeIf { it.isNotBlank() } else null
         if (undo_send_enabled) {
             scope.launch {
                 draft_save_job?.cancel()
@@ -926,6 +930,7 @@ fun ComposeScreen(
                     attachments = attachment_payloads,
                     sender_alias_hash = if (snap_from != user_email) alias_hash_map[snap_from]?.takeIf { it.isNotBlank() } else null,
                     suppress_branding = suppress_branding,
+                    forward_original_mail_id = forward_original_mail_id,
                     undo_seconds = undo_send_seconds,
                     draft_id = snapshot_draft_id,
                 )
@@ -934,7 +939,7 @@ fun ComposeScreen(
                 on_sent()
             }
         } else {
-            execute_send(body_html, attachment_payloads, snap_to, snap_cc, snap_bcc, snap_subject, snap_from, suppress_branding)
+            execute_send(body_html, attachment_payloads, snap_to, snap_cc, snap_bcc, snap_subject, snap_from, suppress_branding, forward_original_mail_id)
         }
     }
 

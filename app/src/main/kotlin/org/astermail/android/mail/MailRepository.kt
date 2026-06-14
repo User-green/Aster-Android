@@ -195,6 +195,7 @@ class MailRepository @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
+        forward_original_mail_id: String? = null,
         undo_seconds: Int,
         draft_id: String? = null,
         on_completed: ((Result<Unit>) -> Unit)? = null,
@@ -220,7 +221,11 @@ class MailRepository @Inject constructor(
                     attachments = attachments,
                     sender_alias_hash = sender_alias_hash,
                     suppress_branding = suppress_branding,
+                    forward_original_mail_id = forward_original_mail_id,
                 )
+                if (result.isSuccess && !draft_id.isNullOrBlank()) {
+                    delete_draft(draft_id)
+                }
                 val unit_result: Result<Unit> = result.map { }
                 _send_result_events.tryEmit(unit_result)
                 on_completed?.invoke(unit_result)
@@ -396,6 +401,11 @@ class MailRepository @Inject constructor(
     suspend fun mark_read(item_id: String, is_read: Boolean, raw_item: MailItem? = null): Result<Unit> = runCatching {
         val request = build_metadata_patch(raw_item, mapOf("is_read" to is_read))
         mail_api.patch_metadata(item_id, request)
+        Unit
+    }
+
+    suspend fun mark_thread_read(thread_token: String): Result<Unit> = runCatching {
+        mail_api.mark_thread_read(thread_token)
         Unit
     }
 
@@ -1317,6 +1327,7 @@ class MailRepository @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
+        forward_original_mail_id: String? = null,
     ): Result<SimpleSendResponse> = runCatching {
         val envelope = build_envelope_json(
             subject = subject,
@@ -1325,6 +1336,7 @@ class MailRepository @Inject constructor(
             from_name = sender_display_name.orEmpty(),
             to = to,
             cc = cc,
+            bcc = bcc,
         )
         val (encrypted_envelope, envelope_nonce) = encrypt_envelope(envelope)
 
@@ -1435,6 +1447,7 @@ class MailRepository @Inject constructor(
                     expires_at = expires_at,
                     sender_alias_hash = sender_alias_hash,
                     suppress_branding = suppress_branding,
+                    forward_original_mail_id = forward_original_mail_id,
                 ),
             )
         }
@@ -1570,6 +1583,7 @@ class MailRepository @Inject constructor(
         from_name: String,
         to: List<String>,
         cc: List<String>,
+        bcc: List<String> = emptyList(),
     ): String {
         val obj = org.json.JSONObject()
         obj.put("subject", subject)
@@ -1584,6 +1598,9 @@ class MailRepository @Inject constructor(
         })
         obj.put("cc", org.json.JSONArray().apply {
             cc.forEach { put(org.json.JSONObject().apply { put("name", ""); put("email", it) }) }
+        })
+        obj.put("bcc", org.json.JSONArray().apply {
+            bcc.forEach { put(org.json.JSONObject().apply { put("name", ""); put("email", it) }) }
         })
         obj.put("sent_at", java.text.SimpleDateFormat(
             "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US,

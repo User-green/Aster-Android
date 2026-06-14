@@ -668,7 +668,12 @@ class MailViewModel @Inject constructor(
         }
         invalidate_caches(listOf("starred"))
         viewModelScope.launch {
-            repository.mark_read(item_id, true, item?.raw_item)
+            repository.mark_read(item_id, true, item?.raw_item).onSuccess {
+                val thread_token = item?.thread_token
+                if (!thread_token.isNullOrBlank() && (item.thread_message_count) > 1) {
+                    repository.mark_thread_read(thread_token)
+                }
+            }
         }
     }
 
@@ -1314,6 +1319,7 @@ class MailViewModel @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
+        forward_original_mail_id: String? = null,
     ): Result<org.astermail.android.api.send.SimpleSendResponse> {
         val result = repository.send_email(
             to = to,
@@ -1328,6 +1334,7 @@ class MailViewModel @Inject constructor(
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
             suppress_branding = suppress_branding,
+            forward_original_mail_id = forward_original_mail_id,
         )
         if (result.isSuccess) {
             invalidate_caches(listOf("sent", "drafts"))
@@ -1365,6 +1372,7 @@ class MailViewModel @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
+        forward_original_mail_id: String? = null,
         undo_seconds: Int,
         draft_id: String? = null,
     ) {
@@ -1381,6 +1389,7 @@ class MailViewModel @Inject constructor(
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
             suppress_branding = suppress_branding,
+            forward_original_mail_id = forward_original_mail_id,
             undo_seconds = undo_seconds,
             draft_id = draft_id,
         )
