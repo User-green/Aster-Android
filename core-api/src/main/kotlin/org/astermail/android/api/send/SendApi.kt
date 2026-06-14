@@ -53,6 +53,7 @@ data class SimpleSendRequest(
     val expires_at: String? = null,
     val attachments: List<SendAttachmentPayload> = emptyList(),
     val forward_original_mail_id: String? = null,
+    val suppress_branding: Boolean? = null,
 )
 
 @Serializable
@@ -92,6 +93,7 @@ data class ExternalSendRequest(
     val expiry_password: String? = null,
     val acknowledge_server_readable: Boolean = true,
     val attachments: List<ExternalAttachmentPayload> = emptyList(),
+    val suppress_branding: Boolean? = null,
 )
 
 @Serializable

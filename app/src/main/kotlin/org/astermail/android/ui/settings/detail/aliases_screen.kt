@@ -804,6 +804,16 @@ private fun preferences_tab(
 
     var show_unsubscribe_dialog by remember { mutableStateOf(false) }
 
+    if (prefs == null) {
+        Box(
+            modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+        }
+        return
+    }
+
     section_label(stringResource(R.string.alias_forwarding))
     AsterCard(modifier = Modifier.fillMaxWidth()) {
         Column(modifier = Modifier.padding(AsterSpacing.lg)) {

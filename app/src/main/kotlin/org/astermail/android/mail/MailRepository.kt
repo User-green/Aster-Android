@@ -194,6 +194,7 @@ class MailRepository @Inject constructor(
         expires_at: String? = null,
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
+        suppress_branding: Boolean? = null,
         undo_seconds: Int,
         draft_id: String? = null,
         on_completed: ((Result<Unit>) -> Unit)? = null,
@@ -218,6 +219,7 @@ class MailRepository @Inject constructor(
                     expires_at = expires_at,
                     attachments = attachments,
                     sender_alias_hash = sender_alias_hash,
+                    suppress_branding = suppress_branding,
                 )
                 val unit_result: Result<Unit> = result.map { }
                 _send_result_events.tryEmit(unit_result)
@@ -441,6 +443,18 @@ class MailRepository @Inject constructor(
 
     suspend fun archive(item_ids: List<String>, raw_items: List<MailItem?> = emptyList()): Result<Unit> = runCatching {
         mail_api.bulk_action(BulkScopeRequest(action = "archive", ids = item_ids))
+        item_ids.forEachIndexed { index, item_id ->
+            val raw_item = raw_items.getOrNull(index)
+            val request = build_metadata_patch(
+                raw_item,
+                mapOf(
+                    "is_archived" to true,
+                    "is_trashed" to false,
+                    "is_spam" to false,
+                ),
+            )
+            mail_api.patch_metadata(item_id, request)
+        }
         Unit
     }
 
@@ -1302,6 +1316,7 @@ class MailRepository @Inject constructor(
         expires_at: String? = null,
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
+        suppress_branding: Boolean? = null,
     ): Result<SimpleSendResponse> = runCatching {
         val envelope = build_envelope_json(
             subject = subject,
@@ -1374,6 +1389,7 @@ class MailRepository @Inject constructor(
                     acknowledge_server_readable = true,
                     attachments = attachments,
                     sender_alias_hash = sender_alias_hash,
+                    suppress_branding = suppress_branding,
                 ),
             )
             SimpleSendResponse(
@@ -1418,6 +1434,7 @@ class MailRepository @Inject constructor(
                     thread_token = thread_token,
                     expires_at = expires_at,
                     sender_alias_hash = sender_alias_hash,
+                    suppress_branding = suppress_branding,
                 ),
             )
         }
