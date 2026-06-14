@@ -21,7 +21,6 @@
 
 package org.astermail.android.contacts
 
-import android.content.Context
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -33,7 +32,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.astermail.android.R
 import org.astermail.android.api.contacts.CreateContactResponse
 import org.astermail.android.api.contacts.DeleteContactResponse
 import org.astermail.android.ui.contacts.Contact
@@ -50,7 +48,7 @@ class ContactsViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
     private lateinit var repository: ContactsRepository
-    private lateinit var context: Context
+    private lateinit var context: android.content.Context
     private lateinit var vm: ContactsViewModel
 
     @Before
@@ -58,13 +56,14 @@ class ContactsViewModelTest {
         Dispatchers.setMain(dispatcher)
         repository = mockk(relaxed = true)
         context = mockk(relaxed = true)
-        val strings = mapOf(
-            R.string.something_went_wrong to "Something went wrong",
-            R.string.error_no_connection to "Could not connect to the server. Check your internet connection.",
-            R.string.error_timeout to "Connection timed out. Please try again.",
-            R.string.error_ssl to "Secure connection failed. Please try again.",
-        )
-        every { context.getString(any()) } answers { strings[firstArg()] ?: "" }
+        every { context.getString(org.astermail.android.R.string.error_no_connection) } returns
+            "Could not connect to the server. Check your internet connection."
+        every { context.getString(org.astermail.android.R.string.error_timeout) } returns
+            "Connection timed out. Please try again."
+        every { context.getString(org.astermail.android.R.string.error_ssl) } returns
+            "Secure connection failed. Please try again."
+        every { context.getString(org.astermail.android.R.string.something_went_wrong) } returns
+            "Something went wrong"
         vm = ContactsViewModel(repository, context)
     }
 
@@ -133,14 +132,14 @@ class ContactsViewModelTest {
     @Test
     fun `load_contacts error sets error message`() = runTest {
         coEvery { repository.fetch_contacts() } returns
-            Result.failure(RuntimeException("server rejected request"))
+            Result.failure(RuntimeException("network timeout"))
 
         vm.load_contacts()
         advanceUntilIdle()
 
         val state = vm.state.value
         assertFalse(state.is_loading)
-        assertEquals("server rejected request", state.error)
+        assertEquals("Connection timed out. Please try again.", state.error)
         assertTrue(state.contacts.isEmpty())
     }
 

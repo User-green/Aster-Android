@@ -30,8 +30,10 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.astermail.android.R
 import org.astermail.android.api.templates.CreateTemplateRequest
 import org.astermail.android.api.templates.TemplateItem
@@ -71,11 +73,13 @@ class TemplatesViewModel @Inject constructor(
             _state.value = _state.value.copy(is_loading = true, error = null)
             val result = runCatching {
                 val response = api.list()
-                val key = derive_key() ?: error("session expired")
-                try {
-                    response.templates.mapNotNull { decrypt(it, key) }
-                } finally {
-                    key.fill(0)
+                withContext(Dispatchers.Default) {
+                    val key = derive_key() ?: error("session expired")
+                    try {
+                        response.templates.mapNotNull { decrypt(it, key) }
+                    } finally {
+                        key.fill(0)
+                    }
                 }
             }
             _state.value = result.fold(
@@ -120,8 +124,9 @@ class TemplatesViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = _state.value.copy(is_saving = true, error = null)
             val outcome = runCatching {
-                val key = derive_key() ?: error("session expired")
-                try {
+                withContext(Dispatchers.Default) {
+                    val key = derive_key() ?: error("session expired")
+                    try {
                     val name_field = encrypt_to_b64(draft.name, key)
                     val category_field = encrypt_to_b64(draft.category, key)
                     val content_field = encrypt_to_b64(draft.content, key)
@@ -152,8 +157,9 @@ class TemplatesViewModel @Inject constructor(
                             ),
                         )
                     }
-                } finally {
-                    key.fill(0)
+                    } finally {
+                        key.fill(0)
+                    }
                 }
             }
             outcome.fold(

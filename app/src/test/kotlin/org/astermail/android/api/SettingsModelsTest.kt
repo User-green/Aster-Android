@@ -49,10 +49,6 @@ class SettingsModelsTest {
     fun `SessionInfo defaults`() {
         val session = SessionInfo(id = "s1")
         assertEquals("s1", session.id)
-        assertEquals("", session.device_type)
-        assertEquals("", session.browser)
-        assertEquals("", session.os)
-        assertNull(session.last_active)
         assertNull(session.created_at)
         assertFalse(session.is_current)
     }
@@ -61,17 +57,9 @@ class SettingsModelsTest {
     fun `SessionInfo with all fields`() {
         val session = SessionInfo(
             id = "s1",
-            device_type = "android",
-            browser = "Chrome",
-            os = "Android 14",
-            last_active = "2026-04-26T10:00:00Z",
             created_at = "2026-04-01T00:00:00Z",
             is_current = true,
         )
-        assertEquals("android", session.device_type)
-        assertEquals("Chrome", session.browser)
-        assertEquals("Android 14", session.os)
-        assertEquals("2026-04-26T10:00:00Z", session.last_active)
         assertEquals("2026-04-01T00:00:00Z", session.created_at)
         assertTrue(session.is_current)
     }
@@ -79,9 +67,9 @@ class SettingsModelsTest {
     @Test
     fun `SessionInfo copy`() {
         val original = SessionInfo(id = "s1", is_current = false)
-        val copied = original.copy(is_current = true, device_type = "desktop")
+        val copied = original.copy(is_current = true, created_at = "10.0.0.1")
         assertTrue(copied.is_current)
-        assertEquals("desktop", copied.device_type)
+        assertEquals("10.0.0.1", copied.created_at)
         assertEquals("s1", copied.id)
     }
 

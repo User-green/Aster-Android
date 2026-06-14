@@ -170,24 +170,42 @@ import org.astermail.android.ui.theme.local_text_scale
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
+    private val lockdown_listener =
+        android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+            runOnUiThread { enforce_secure_flag() }
+        }
+
     override fun onCreate(saved_instance_state: Bundle?) {
         super.onCreate(saved_instance_state)
-        apply_lockdown_flag(LockdownStore.is_enabled(applicationContext))
+        enforce_secure_flag()
+        LockdownStore.register_listener(applicationContext, lockdown_listener)
         enableEdgeToEdge()
         setContent {
             AsterRoot()
         }
     }
 
-    fun apply_lockdown_flag(enabled: Boolean) {
-        if (enabled) {
-            window.setFlags(
-                android.view.WindowManager.LayoutParams.FLAG_SECURE,
-                android.view.WindowManager.LayoutParams.FLAG_SECURE,
-            )
-        } else {
-            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
-        }
+    override fun onResume() {
+        super.onResume()
+        enforce_secure_flag()
+    }
+
+    override fun onPause() {
+        enforce_secure_flag()
+        super.onPause()
+    }
+
+    override fun onDestroy() {
+        LockdownStore.unregister_listener(applicationContext, lockdown_listener)
+        super.onDestroy()
+    }
+
+    private fun enforce_secure_flag() {
+        window.setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+            android.view.WindowManager.LayoutParams.FLAG_SECURE,
+        )
     }
 }
 
@@ -196,7 +214,10 @@ private fun request_notification_permission_on_launch() {
     val context = androidx.compose.ui.platform.LocalContext.current
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) {}
+    ) {
+        context.getSharedPreferences("aster_perms", android.content.Context.MODE_PRIVATE)
+            .edit().putBoolean("notif_perm_asked", true).apply()
+    }
     androidx.compose.runtime.LaunchedEffect(Unit) {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             val prefs = context.getSharedPreferences("aster_perms", android.content.Context.MODE_PRIVATE)
@@ -205,7 +226,6 @@ private fun request_notification_permission_on_launch() {
                 context, android.Manifest.permission.POST_NOTIFICATIONS,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             if (!granted && !already_asked) {
-                prefs.edit().putBoolean("notif_perm_asked", true).apply()
                 launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -475,7 +495,7 @@ private fun AsterNavHost() {
         )
         androidx.compose.runtime.LaunchedEffect(Unit) {
             org.astermail.android.api.AuthEventBus.unauthorized.collect {
-                auth_gate.auth_repository.logout()
+                auth_gate.auth_repository.handle_unauthorized_signal()
             }
         }
     }
@@ -1414,7 +1434,7 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
     }
 }
 
-private fun looks_encrypted(value: String?): Boolean {
+internal fun looks_encrypted(value: String?): Boolean {
     if (value.isNullOrBlank()) return false
     if (value.length < 20) return false
     val base64_chars = value.count { it in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=" }

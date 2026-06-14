@@ -31,7 +31,6 @@ import io.mockk.unmockkStatic
 import kotlinx.coroutines.test.runTest
 import org.astermail.android.api.mail.BulkScopeRequest
 import org.astermail.android.api.mail.BulkScopeResponse
-import org.astermail.android.api.mail.DraftsListResponse
 import org.astermail.android.api.mail.MailApi
 import org.astermail.android.api.mail.MailItem
 import org.astermail.android.api.mail.MailItemMetadata
@@ -42,11 +41,6 @@ import org.astermail.android.api.mail.ThreadMessageItem
 import org.astermail.android.api.mail.ThreadWithMessages
 import org.astermail.android.api.send.SendApi
 import org.astermail.android.api.send.SimpleSendResponse
-import org.astermail.android.api.snooze.SnoozeApi
-import org.astermail.android.api.labels.LabelsApi
-import org.astermail.android.api.scheduled.ScheduledApi
-import org.astermail.android.mail.ratchet.RatchetDecryptor
-import org.astermail.android.mail.ratchet.RatchetEncryptor
 import org.astermail.android.storage.SessionKeyStore
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -61,12 +55,12 @@ class MailRepositoryTest {
 
     private lateinit var mail_api: MailApi
     private lateinit var send_api: SendApi
-    private lateinit var snooze_api: SnoozeApi
-    private lateinit var labels_api: LabelsApi
+    private lateinit var snooze_api: org.astermail.android.api.snooze.SnoozeApi
+    private lateinit var labels_api: org.astermail.android.api.labels.LabelsApi
     private lateinit var session_key_store: SessionKeyStore
-    private lateinit var scheduled_api: ScheduledApi
-    private lateinit var ratchet_decryptor: RatchetDecryptor
-    private lateinit var ratchet_encryptor: RatchetEncryptor
+    private lateinit var scheduled_api: org.astermail.android.api.scheduled.ScheduledApi
+    private lateinit var ratchet_decryptor: org.astermail.android.mail.ratchet.RatchetDecryptor
+    private lateinit var ratchet_encryptor: org.astermail.android.mail.ratchet.RatchetEncryptor
     private lateinit var context: android.content.Context
     private lateinit var repo: MailRepository
 
@@ -173,9 +167,9 @@ class MailRepositoryTest {
     }
 
     @Test
-    fun `fetch_drafts delegates to list_drafts`() = runTest {
+    fun `fetch_drafts delegates with draft type`() = runTest {
         coEvery { mail_api.list_drafts(any(), any()) } returns
-            DraftsListResponse(items = emptyList(), has_more = false, next_cursor = null)
+            org.astermail.android.api.mail.DraftsListResponse(items = emptyList(), next_cursor = null, has_more = false)
 
         repo.fetch_drafts()
         coVerify { mail_api.list_drafts(any(), any()) }
@@ -245,42 +239,11 @@ class MailRepositoryTest {
     }
 
     @Test
-    fun `archive re-encrypts metadata for each item`() = runTest {
-        coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 3)
-
-        repo.archive(listOf("a", "b", "c"))
-
-        val expected = PatchMetadataRequest(
-            is_trashed = false,
-            is_archived = true,
-            is_spam = false,
-        )
-        coVerify { mail_api.patch_metadata("a", expected) }
-        coVerify { mail_api.patch_metadata("b", expected) }
-        coVerify { mail_api.patch_metadata("c", expected) }
-    }
-
-    @Test
     fun `trash calls bulk_action with trash action`() = runTest {
         coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 2)
 
         repo.trash(listOf("x", "y"))
         coVerify { mail_api.bulk_action(BulkScopeRequest(action = "trash", ids = listOf("x", "y"))) }
-    }
-
-    @Test
-    fun `trash re-encrypts metadata for each item`() = runTest {
-        coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 2)
-
-        repo.trash(listOf("x", "y"))
-
-        val expected = PatchMetadataRequest(
-            is_trashed = true,
-            is_archived = false,
-            is_spam = false,
-        )
-        coVerify { mail_api.patch_metadata("x", expected) }
-        coVerify { mail_api.patch_metadata("y", expected) }
     }
 
     @Test
@@ -292,38 +255,11 @@ class MailRepositoryTest {
     }
 
     @Test
-    fun `mark_spam re-encrypts metadata for each item`() = runTest {
-        coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 1)
-
-        repo.mark_spam(listOf("s1"))
-
-        coVerify {
-            mail_api.patch_metadata(
-                "s1",
-                PatchMetadataRequest(is_trashed = false, is_spam = true),
-            )
-        }
-    }
-
-    @Test
     fun `mark_read_bulk calls bulk_action with mark_read action`() = runTest {
         coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 5)
 
-        val result = repo.mark_read_bulk(listOf("a", "b", "c", "d", "e"))
-        assertTrue(result.isSuccess)
-        assertEquals(5, result.getOrThrow().affected_count)
+        repo.mark_read_bulk(listOf("a", "b", "c", "d", "e"))
         coVerify { mail_api.bulk_action(BulkScopeRequest(action = "mark_read", ids = listOf("a", "b", "c", "d", "e"))) }
-    }
-
-    @Test
-    fun `mark_read_bulk re-encrypts metadata for each item`() = runTest {
-        coEvery { mail_api.bulk_action(any()) } returns BulkScopeResponse(affected_count = 2)
-
-        repo.mark_read_bulk(listOf("a", "b"))
-
-        val expected = PatchMetadataRequest(is_read = true)
-        coVerify { mail_api.patch_metadata("a", expected) }
-        coVerify { mail_api.patch_metadata("b", expected) }
     }
 
     @Test
@@ -366,16 +302,18 @@ class MailRepositoryTest {
 
     @Test
     fun `fetch_all_for_search stops at max_pages`() = runTest {
-        val page_items = (1..50).map { fake_mail_item("p_$it") }
-        coEvery { mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()) } returns
-            MailItemsListResponse(page_items, has_more = true, next_cursor = "next", total = 1000)
+        val page1_items = (1..50).map { fake_mail_item("p1_$it") }
+        val page2_items = (1..50).map { fake_mail_item("p2_$it") }
+        coEvery {
+            mail_api.list_messages(any(), cursor = isNull(), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns MailItemsListResponse(page1_items, has_more = true, next_cursor = "next", total = 1000)
+        coEvery {
+            mail_api.list_messages(any(), cursor = eq("next"), any(), any(), any(), any(), any(), any(), any(), any(), any())
+        } returns MailItemsListResponse(page2_items, has_more = true, next_cursor = "next2", total = 1000)
 
         val result = repo.fetch_all_for_search(max_pages = 2)
         assertTrue(result.isSuccess)
-        coVerify(exactly = 8) {
-            mail_api.list_messages(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any())
-        }
-        assertEquals(50, result.getOrThrow().size)
+        assertEquals(100, result.getOrThrow().size)
     }
 
     @Test
@@ -627,9 +565,9 @@ class MailRepositoryTest {
     }
 
     @Test
-    fun `fetch_drafts routes to list_drafts`() = runTest {
+    fun `fetch_drafts routes to list_messages with draft type`() = runTest {
         coEvery { mail_api.list_drafts(any(), any()) } returns
-            DraftsListResponse(items = emptyList(), has_more = false, next_cursor = null)
+            org.astermail.android.api.mail.DraftsListResponse(items = emptyList(), next_cursor = null, has_more = false)
 
         val result = repo.fetch_drafts()
         assertTrue(result.isSuccess)

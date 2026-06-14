@@ -172,6 +172,7 @@ import androidx.compose.material.icons.filled.ZoomOut
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.stringResource
 import org.astermail.android.R
+import org.astermail.android.looks_encrypted
 import org.astermail.android.api.subscriptions.ProxyUnsubscribeRequest
 import org.astermail.android.design.SquircleShape
 import org.astermail.android.design.AsterMaterial
@@ -349,7 +350,7 @@ fun MailDetailScreen(
     var preview_bytes by remember { mutableStateOf<ByteArray?>(null) }
     var is_downloading_attachment by remember { mutableStateOf(false) }
 
-    val messages = remember(email_id, api_messages) { api_messages }
+    val messages = remember(email_id, api_messages) { api_messages.distinctBy { it.id } }
     val is_thread_encrypted = remember(messages) { messages.any { it.is_encrypted } }
     val thread_trackers_blocked = remember(messages) { messages.sumOf { it.trackers_blocked } }
 
@@ -1158,9 +1159,14 @@ fun MailDetailScreen(
 
     if (show_folder_sheet) {
         val settings_state by settings_vm.state.collectAsStateWithLifecycle()
+        val unnamed_folder_label = stringResource(R.string.unnamed_folder)
+        val folder_decrypt_failed_label = stringResource(R.string.folder_decrypt_failed)
         val folder_items = settings_state.labels
             .filter { (it.folder_type == "folder" || it.folder_type == "custom") && !it.is_system }
-        val unnamed_folder_label = stringResource(R.string.unnamed_folder)
+            .map { label ->
+                val readable = label.encrypted_name?.takeIf { it.isNotBlank() && !looks_encrypted(it) }
+                label.copy(encrypted_name = readable ?: folder_decrypt_failed_label)
+            }
         label_picker_sheet(
             title = stringResource(R.string.move_to_folder),
             empty_message = stringResource(R.string.no_folders_yet_create),
@@ -2361,7 +2367,8 @@ private fun print_email(context: android.content.Context, msg: ThreadMessage, su
     val sender = "${msg.sender_name} <${msg.sender_email}>"
     val timestamp_text = java.text.SimpleDateFormat("MMM d, yyyy h:mm a", java.util.Locale.getDefault())
         .format(java.util.Date(msg.timestamp))
-    val body = msg.body_html?.takeIf { it.isNotBlank() } ?: "<pre>${android.text.Html.escapeHtml(msg.body)}</pre>"
+    val body = msg.body_html?.takeIf { it.isNotBlank() }?.let { EmailHtmlSanitizer.sanitize(it) }
+        ?: "<pre>${android.text.Html.escapeHtml(msg.body)}</pre>"
     val html = """
         <html><head><meta charset="utf-8">
         <style>
@@ -2664,7 +2671,15 @@ a,a *{color:#60a5fa!important}
         val detail_border = if (simple_dark) "#374151" else "#e5e7eb"
         val detail_color = if (simple_dark) "#9ca3af" else "#6b7280"
 
+        val csp_nonce = run {
+            val nonce_bytes = ByteArray(16)
+            java.security.SecureRandom().nextBytes(nonce_bytes)
+            android.util.Base64.encodeToString(nonce_bytes, android.util.Base64.NO_WRAP or android.util.Base64.NO_PADDING)
+        }
+        val csp_meta = "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src https://app.astermail.org data:; style-src 'unsafe-inline'; font-src https://app.astermail.org data:; script-src 'nonce-$csp_nonce'; base-uri 'none'; form-action 'none'; frame-src 'none'; object-src 'none'\">"
+
         return """<!DOCTYPE html><html${if (has_newsletter_layout) " data-nl=\"1\"" else ""}${if (is_html_body && !simple_dark) " style=\"background-color:transparent\"" else ""}><head>
+$csp_meta
 <meta charset="utf-8">
 $viewport_meta
 $color_scheme_meta
@@ -2695,7 +2710,7 @@ details.aster-forwarded-collapse>.aster-forwarded-content{padding-top:8px}
 $dark_css
 </style>
 </head><body style="$body_style"><div id="m">$body</div>
-<script>
+<script nonce="$csp_nonce">
 (function(){
   var body=document.body;
   if(!body)return;
@@ -2811,7 +2826,7 @@ $dark_css
       var par=proton.parentNode;while(cbq.firstChild)par.insertBefore(cbq.firstChild,proton);
       meta.push(proton);
       var det=document.createElement('details');det.className='aster-forwarded-collapse';
-      var sum=document.createElement('summary');sum.textContent='${forwarded_label.replace("'", "\\'")}';det.appendChild(sum);
+      var sum=document.createElement('summary');sum.textContent=${org.json.JSONObject.quote(forwarded_label)};det.appendChild(sum);
       var cdiv2=document.createElement('div');cdiv2.className='aster-forwarded-content';
       meta.forEach(function(n){cdiv2.appendChild(n)});det.appendChild(cdiv2);body.appendChild(det);
     }
@@ -3061,7 +3076,7 @@ $dark_css
                     settings.builtInZoomControls = true
                     settings.displayZoomControls = false
                     settings.setSupportZoom(true)
-                    settings.domStorageEnabled = true
+                    settings.domStorageEnabled = false
                     settings.loadsImagesAutomatically = true
                     settings.blockNetworkImage = !allow_external
                     settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
@@ -3527,7 +3542,7 @@ private fun attachment_preview_dialog(
                         try {
                             val mime = attachment.content_type.ifBlank { "application/octet-stream" }
                             val values = ContentValues().apply {
-                                put(MediaStore.Downloads.DISPLAY_NAME, attachment.filename)
+                                put(MediaStore.Downloads.DISPLAY_NAME, sanitize_filename(attachment.filename))
                                 put(MediaStore.Downloads.MIME_TYPE, mime)
                                 put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                                 put(MediaStore.Downloads.IS_PENDING, 1)
@@ -3565,7 +3580,17 @@ private fun attachment_preview_dialog(
                     ct.startsWith("image/") -> {
                         val bitmap by produceState<android.graphics.Bitmap?>(initialValue = null, bytes) {
                             value = withContext(kotlinx.coroutines.Dispatchers.Default) {
-                                BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                runCatching {
+                                    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+                                    val max_dim = 2048
+                                    var sample = 1
+                                    while (bounds.outWidth / sample > max_dim || bounds.outHeight / sample > max_dim) {
+                                        sample *= 2
+                                    }
+                                    val opts = BitmapFactory.Options().apply { inSampleSize = sample }
+                                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+                                }.getOrNull()
                             }
                         }
                         val bmp = bitmap
@@ -3659,7 +3684,7 @@ private fun attachment_preview_dialog(
                                             try {
                                                 val mime = attachment.content_type.ifBlank { "application/octet-stream" }
                                                 val values = ContentValues().apply {
-                                                    put(MediaStore.Downloads.DISPLAY_NAME, attachment.filename)
+                                                    put(MediaStore.Downloads.DISPLAY_NAME, sanitize_filename(attachment.filename))
                                                     put(MediaStore.Downloads.MIME_TYPE, mime)
                                                     put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
                                                     put(MediaStore.Downloads.IS_PENDING, 1)

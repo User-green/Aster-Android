@@ -439,20 +439,6 @@ fun ImportScreen(
                 )
                 Spacer(Modifier.size(AsterSpacing.sm))
                 provider_row(
-                    icon_res = R.drawable.ic_brand_yahoo,
-                    label = stringResource(R.string.import_provider_yahoo),
-                    trailing_label = null,
-                    on_click = { open_url("https://app.astermail.org/settings?section=import&provider=yahoo") },
-                )
-                Spacer(Modifier.size(AsterSpacing.sm))
-                provider_row(
-                    icon_res = R.drawable.ic_brand_icloud,
-                    label = stringResource(R.string.import_provider_icloud),
-                    trailing_label = null,
-                    on_click = { open_url("https://app.astermail.org/settings?section=import&provider=icloud") },
-                )
-                Spacer(Modifier.size(AsterSpacing.sm))
-                provider_row(
                     icon_res = R.drawable.ic_external_link,
                     label = stringResource(R.string.import_provider_other_imap),
                     trailing_label = null,

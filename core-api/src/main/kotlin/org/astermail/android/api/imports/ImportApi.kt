@@ -27,12 +27,9 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
-import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 import org.astermail.android.api.ApiClient
-import org.astermail.android.api.ApiError
 
 @Serializable
 data class UploadInitRequest(
@@ -169,11 +166,11 @@ interface ImportApi {
 
 class ImportApiImpl(private val client: ApiClient) : ImportApi {
     private val base = "/api/mail/v1/import"
-    private val json = Json { ignoreUnknownKeys = true }
 
     private suspend inline fun <reified T> decode(response: HttpResponse): T {
-        if (response.status != HttpStatusCode.OK) {
-            throw ApiError.ServerError(response.status.value)
+        if (response.status.value !in 200..299) {
+            val body = try { response.bodyAsText() } catch (_: Throwable) { "" }
+            throw client.map_http_status(response.status.value, body)
         }
         return response.body()
     }

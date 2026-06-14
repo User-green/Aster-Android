@@ -82,7 +82,9 @@ data class CreateGhostAliasResponse(
 )
 
 @Serializable
-data class ExtendGhostAliasRequest(val additional_days: Int = 30)
+data class ExtendGhostAliasRequest(
+    val additional_days: Int = 30,
+)
 
 interface GhostAliasApi {
     suspend fun list_ghost_aliases(): GhostAliasListResponse

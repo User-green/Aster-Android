@@ -26,6 +26,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -112,11 +113,15 @@ class ExternalAccountsViewModel @Inject constructor(
     }
 
     fun cancel_oauth() {
+        poll_job?.cancel()
         _state.value = _state.value.copy(connecting_provider = null, authorize_url = null)
     }
 
+    private var poll_job: Job? = null
+
     private fun poll_for_new_account() {
-        viewModelScope.launch {
+        poll_job?.cancel()
+        poll_job = viewModelScope.launch {
             val before_tokens = _state.value.accounts.map { it.account_token }.toSet()
             repeat(60) {
                 delay(2000)

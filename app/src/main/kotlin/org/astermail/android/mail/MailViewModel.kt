@@ -375,6 +375,12 @@ class MailViewModel @Inject constructor(
             }
             result.fold(
                 onSuccess = { page ->
+                    if (BuildConfig.DEBUG && (folder.startsWith("label:") || folder.startsWith("tag:"))) {
+                        android.util.Log.d(
+                            "MailVM",
+                            "label_load folder=$folder api_items=${page.items.size} archived_in_api=${page.items.count { it.is_archived }} total=${page.total}",
+                        )
+                    }
                     val previous = _inbox_state.value.items
                     val combined = merge_with_previous(page.items, previous, folder, page.total)
                     val merged_items = apply_demo_overlay(
@@ -668,12 +674,7 @@ class MailViewModel @Inject constructor(
         }
         invalidate_caches(listOf("starred"))
         viewModelScope.launch {
-            repository.mark_read(item_id, true, item?.raw_item).onSuccess {
-                val thread_token = item?.thread_token
-                if (!thread_token.isNullOrBlank() && (item.thread_message_count) > 1) {
-                    repository.mark_thread_read(thread_token)
-                }
-            }
+            repository.mark_read(item_id, true, item?.raw_item)
         }
     }
 
@@ -809,9 +810,23 @@ class MailViewModel @Inject constructor(
 
     fun apply_label(item_id: String, label_token: String, display_name: String) {
         if (item_id == DEMO_PHISH_ITEM_ID) return
+        _inbox_state.value = _inbox_state.value.copy(
+            items = _inbox_state.value.items.map {
+                if (it.id == item_id) it.copy(labels = (it.labels + label_token).distinct()) else it
+            },
+        )
+        val thread = _thread_state.value
+        if (thread.item?.id == item_id) {
+            _thread_state.value = thread.copy(
+                item = thread.item.copy(labels = (thread.item.labels + label_token).distinct()),
+            )
+        }
         viewModelScope.launch {
             repository.add_label_to_item(item_id, label_token).fold(
-                onSuccess = { emit_toast(context.getString(R.string.added_to_label, display_name)) },
+                onSuccess = {
+                    invalidate_caches(listOf("label:$label_token"))
+                    emit_toast(context.getString(R.string.added_to_label, display_name))
+                },
                 onFailure = { emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label)) },
             )
         }
@@ -882,7 +897,9 @@ class MailViewModel @Inject constructor(
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
-        invalidate_caches(listOf("archive", "inbox"))
+        val affected_label_caches = removed_items.flatMap { it.labels }.map { "label:$it" }
+        val affected_tag_caches = removed_items.flatMap { it.tag_tokens }.map { "tag:$it" }
+        invalidate_caches(listOf("archive", "inbox", "all") + affected_label_caches + affected_tag_caches)
         viewModelScope.launch {
             try {
                 repository.archive(item_ids, raw_items).fold(
@@ -1011,13 +1028,12 @@ class MailViewModel @Inject constructor(
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
-        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("spam", "inbox"))
         viewModelScope.launch {
-            repository.unmark_spam(item_ids, raw_items).fold(
+            repository.unmark_spam(item_ids).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.moved_to_inbox),
@@ -1049,8 +1065,7 @@ class MailViewModel @Inject constructor(
 
     fun unarchive_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        val raw_items = lookup_raw_items(item_ids)
-        viewModelScope.launch { repository.unarchive(item_ids, raw_items) }
+        viewModelScope.launch { repository.unarchive(item_ids) }
     }
 
     fun archive_backend_only(item_ids: List<String>) {
@@ -1073,27 +1088,24 @@ class MailViewModel @Inject constructor(
 
     fun restore_trash_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        val raw_items = lookup_raw_items(item_ids)
-        viewModelScope.launch { repository.restore_trash(item_ids, raw_items) }
+        viewModelScope.launch { repository.restore_trash(item_ids) }
     }
 
     fun unmark_spam_backend_only(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        val raw_items = lookup_raw_items(item_ids)
-        viewModelScope.launch { repository.unmark_spam(item_ids, raw_items) }
+        viewModelScope.launch { repository.unmark_spam(item_ids) }
     }
 
     fun unarchive(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
-        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("inbox", "archive"))
         viewModelScope.launch {
-            repository.unarchive(item_ids, raw_items).fold(
+            repository.unarchive(item_ids).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.moved_to_inbox),
@@ -1113,13 +1125,12 @@ class MailViewModel @Inject constructor(
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
-        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("inbox", "trash"))
         viewModelScope.launch {
-            repository.restore_trash(item_ids, raw_items).fold(
+            repository.restore_trash(item_ids).fold(
                 onSuccess = {
                     emit_toast_undo(
                         context.getString(R.string.restored_to_inbox),
@@ -1162,7 +1173,6 @@ class MailViewModel @Inject constructor(
 
     fun mark_read_bulk(item_ids: List<String>) {
         if (item_ids.isEmpty()) return
-        val raw_items = lookup_raw_items(item_ids)
         item_ids.forEach { read_overrides[it] = true }
         _inbox_state.value = _inbox_state.value.copy(
             items = _inbox_state.value.items.map {
@@ -1175,7 +1185,7 @@ class MailViewModel @Inject constructor(
         }
         invalidate_caches(listOf("starred"))
         viewModelScope.launch {
-            repository.mark_read_bulk(item_ids, raw_items).fold(
+            repository.mark_read_bulk(item_ids).fold(
                 onSuccess = { emit_toast(context.getString(R.string.marked_read_count, item_ids.size)) },
                 onFailure = { emit_toast(context.getString(R.string.failed_mark_read)) },
             )
@@ -1326,7 +1336,6 @@ class MailViewModel @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
-        forward_original_mail_id: String? = null,
     ): Result<org.astermail.android.api.send.SimpleSendResponse> {
         val result = repository.send_email(
             to = to,
@@ -1341,7 +1350,6 @@ class MailViewModel @Inject constructor(
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
             suppress_branding = suppress_branding,
-            forward_original_mail_id = forward_original_mail_id,
         )
         if (result.isSuccess) {
             invalidate_caches(listOf("sent", "drafts"))
@@ -1379,7 +1387,6 @@ class MailViewModel @Inject constructor(
         attachments: List<ExternalAttachmentPayload> = emptyList(),
         sender_alias_hash: String? = null,
         suppress_branding: Boolean? = null,
-        forward_original_mail_id: String? = null,
         undo_seconds: Int,
         draft_id: String? = null,
     ) {
@@ -1396,7 +1403,6 @@ class MailViewModel @Inject constructor(
             attachments = attachments,
             sender_alias_hash = sender_alias_hash,
             suppress_branding = suppress_branding,
-            forward_original_mail_id = forward_original_mail_id,
             undo_seconds = undo_seconds,
             draft_id = draft_id,
         )

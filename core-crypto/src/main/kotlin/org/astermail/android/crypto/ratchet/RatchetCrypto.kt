@@ -51,6 +51,24 @@ object RatchetCrypto {
 
     private val ec_factory: KeyFactory by lazy { KeyFactory.getInstance("EC") }
     private val secure_random = SecureRandom()
+    private val three = BigInteger.valueOf(3)
+
+    private fun validate_public_point(point: ECPoint) {
+        require(point != ECPoint.POINT_INFINITY) { "ec point at infinity" }
+        val curve = secp256r1.curve
+        val p = (curve.field as java.security.spec.ECFieldFp).p
+        val x = point.affineX
+        val y = point.affineY
+        require(x.signum() >= 0 && x < p) { "ec x out of field range" }
+        require(y.signum() >= 0 && y < p) { "ec y out of field range" }
+        val lhs = y.multiply(y).mod(p)
+        val rhs = x.modPow(three, p).add(curve.a.multiply(x)).add(curve.b).mod(p)
+        require(lhs == rhs) { "ec point not on curve" }
+    }
+
+    private fun validate_private_scalar(d: BigInteger) {
+        require(d.signum() > 0 && d < secp256r1.order) { "ec private scalar out of range" }
+    }
 
     fun hkdf_sha256(ikm: ByteArray, salt: ByteArray, info: ByteArray, length: Int): ByteArray {
         val gen = HKDFBytesGenerator(SHA256Digest())
@@ -117,6 +135,7 @@ object RatchetCrypto {
 
     fun raw_d_to_private(d_bytes: ByteArray): java.security.PrivateKey {
         val d = BigInteger(1, d_bytes)
+        validate_private_scalar(d)
         return ec_factory.generatePrivate(ECPrivateKeySpec(d, secp256r1))
     }
 
@@ -145,6 +164,7 @@ object RatchetCrypto {
         val obj = org.json.JSONObject(jwk_json)
         val d_bytes = b64url_decode(obj.getString("d"))
         val d = BigInteger(1, d_bytes)
+        validate_private_scalar(d)
         return ec_factory.generatePrivate(ECPrivateKeySpec(d, secp256r1))
     }
 
@@ -152,14 +172,18 @@ object RatchetCrypto {
         val obj = org.json.JSONObject(jwk_json)
         val x = BigInteger(1, b64url_decode(obj.getString("x")))
         val y = BigInteger(1, b64url_decode(obj.getString("y")))
-        return ec_factory.generatePublic(ECPublicKeySpec(ECPoint(x, y), secp256r1))
+        val point = ECPoint(x, y)
+        validate_public_point(point)
+        return ec_factory.generatePublic(ECPublicKeySpec(point, secp256r1))
     }
 
     fun parse_p256_public_raw(raw: ByteArray): java.security.PublicKey {
         require(raw.size == 65 && raw[0] == 0x04.toByte()) { "expected uncompressed P-256 SEC1 (65 bytes, 0x04 prefix), got ${raw.size}" }
         val x = BigInteger(1, raw.copyOfRange(1, 33))
         val y = BigInteger(1, raw.copyOfRange(33, 65))
-        return ec_factory.generatePublic(ECPublicKeySpec(ECPoint(x, y), secp256r1))
+        val point = ECPoint(x, y)
+        validate_public_point(point)
+        return ec_factory.generatePublic(ECPublicKeySpec(point, secp256r1))
     }
 
     fun public_key_to_raw(pub: java.security.interfaces.ECPublicKey): ByteArray {

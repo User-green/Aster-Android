@@ -21,7 +21,6 @@
 
 package org.astermail.android.auth
 
-import android.app.Application
 import android.util.Base64
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -36,7 +35,6 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
-import org.astermail.android.R
 import org.astermail.android.api.recovery.InitiateEmailRecoveryResponse
 import org.astermail.android.api.recovery.RecoveryApi
 import org.junit.After
@@ -51,27 +49,24 @@ import org.junit.Test
 class RecoveryViewModelTest {
 
     private val dispatcher = StandardTestDispatcher()
-    private lateinit var application: Application
+    private lateinit var application: android.app.Application
     private lateinit var recovery_api: RecoveryApi
     private lateinit var vm: RecoveryViewModel
-
-    private val strings = mapOf(
-        R.string.error_send_recovery to "Failed to send recovery email",
-        R.string.error_invalid_recovery_code to "Invalid recovery code format",
-        R.string.error_invalid_code to "Invalid recovery code",
-        R.string.error_password_min_length to "Password must be at least 12 characters",
-        R.string.error_passwords_no_match to "Passwords do not match",
-        R.string.error_recovery_failed to "Recovery failed",
-    )
 
     @Before
     fun setup() {
         Dispatchers.setMain(dispatcher)
         application = mockk(relaxed = true)
-        every { application.applicationContext } returns application
-        every { application.getString(any()) } answers {
-            strings[firstArg()] ?: ""
-        }
+        every { application.getString(org.astermail.android.R.string.error_password_min_length) } returns
+            "Password must be at least 12 characters"
+        every { application.getString(org.astermail.android.R.string.error_passwords_no_match) } returns
+            "Passwords do not match"
+        every { application.getString(org.astermail.android.R.string.error_invalid_recovery_code) } returns
+            "Invalid recovery code format"
+        every { application.getString(org.astermail.android.R.string.error_send_recovery) } returns
+            "failed to send recovery email"
+        every { application.getString(org.astermail.android.R.string.error_invalid_code) } returns
+            "invalid recovery code"
         recovery_api = mockk(relaxed = true)
         mockkStatic(Base64::class)
         every { Base64.encodeToString(any(), any()) } answers {
@@ -149,7 +144,7 @@ class RecoveryViewModelTest {
         vm.send_recovery_email("user@astermail.org")
         advanceUntilIdle()
 
-        assertEquals("Failed to send recovery email", vm.state.value.error)
+        assertEquals("failed to send recovery email", vm.state.value.error)
     }
 
     @Test
@@ -220,7 +215,7 @@ class RecoveryViewModelTest {
         Thread.sleep(100)
         advanceUntilIdle()
 
-        assertEquals("Invalid recovery code", vm.state.value.error)
+        assertEquals("invalid recovery code", vm.state.value.error)
     }
 
     @Test

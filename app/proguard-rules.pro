@@ -40,6 +40,11 @@
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Dao interface * { *; }
 
+# SQLCipher (native libs loaded via JNI)
+-keep class net.sqlcipher.** { *; }
+-keep interface net.sqlcipher.** { *; }
+-dontwarn net.sqlcipher.**
+
 # Coil
 -keep class coil.** { *; }
 -dontwarn coil.**

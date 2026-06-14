@@ -234,12 +234,21 @@ fun InboxScreen(
     }
     val pending_undo_send by mail_vm.pending_undo_send.collectAsStateWithLifecycle()
     var dismissed_send_id by remember { mutableStateOf<Long?>(null) }
+    var send_toast_shown by remember { mutableStateOf(false) }
     LaunchedEffect(pending_undo_send?.started_at_ms) {
-        val p = pending_undo_send ?: return@LaunchedEffect
+        val p = pending_undo_send
+        if (p == null) {
+            if (send_toast_shown) {
+                top_toast_state = null
+                send_toast_shown = false
+            }
+            return@LaunchedEffect
+        }
         val end_ms = p.started_at_ms + p.duration_ms
         while (true) {
             if (dismissed_send_id == p.started_at_ms) {
                 top_toast_state = null
+                send_toast_shown = false
                 return@LaunchedEffect
             }
             val now = System.currentTimeMillis()
@@ -259,9 +268,11 @@ fun InboxScreen(
                 duration_ms = remaining_ms,
                 key = p.started_at_ms,
             )
+            send_toast_shown = true
             kotlinx.coroutines.delay(1000L - (remaining_ms % 1000L))
         }
         top_toast_state = null
+        send_toast_shown = false
     }
 
     val lifecycle_owner = LocalLifecycleOwner.current

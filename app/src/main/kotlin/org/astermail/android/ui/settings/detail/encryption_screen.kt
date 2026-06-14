@@ -43,6 +43,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.FileDownload
+import androidx.compose.material.icons.outlined.Key
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -66,6 +70,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -86,12 +95,13 @@ import org.astermail.android.api.preferences.UserPreferences
 import org.astermail.android.auth.AuthRepository
 import org.astermail.android.crypto.CryptoNative
 import org.astermail.android.design.AsterMaterial
+import org.astermail.android.design.AsterRadius
 import org.astermail.android.design.AsterSpacing
 import org.astermail.android.design.SquircleShape
-import org.astermail.android.design.components.AsterButton
 import org.astermail.android.design.components.AsterCard
 import org.astermail.android.design.components.AsterDivider
 import org.astermail.android.design.components.AsterGhostButton
+import org.astermail.android.design.components.AsterIconButton
 import org.astermail.android.design.components.AsterSecondaryButton
 import org.astermail.android.settings.SettingsViewModel
 import org.astermail.android.storage.SessionKeyStore
@@ -236,102 +246,159 @@ fun EncryptionScreen(
                 }
             }
         } else if (key_available && fingerprint != null) {
-            AsterCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(AsterSpacing.lg)) {
-                    val pgp_info = state.pgp_key_info
-                    if (pgp_info != null && pgp_info.algorithm.isNotBlank()) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Column {
-                                Text(
-                                    text = run {
-                                val base = pgp_info.algorithm.replace(Regex("[0-9]+"), "").uppercase().ifBlank { pgp_info.algorithm.uppercase() }
-                                val size = if (pgp_info.key_size > 0) pgp_info.key_size else pgp_info.algorithm.filter { it.isDigit() }.toIntOrNull() ?: 0
-                                if (size > 0) "$base-$size" else base
-                            },
-                                    color = colors.text_primary,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                if (pgp_info.created_at.isNotBlank()) {
-                                    Text(
-                                        text = stringResource(R.string.created_at_format, pgp_info.created_at.take(10)),
-                                        color = colors.text_tertiary,
-                                        fontSize = 12.sp,
-                                    )
-                                }
-                            }
-                            Box(
-                                modifier = Modifier
-                                    .clip(SquircleShape(6.dp))
-                                    .background(colors.success.copy(alpha = 0.15f))
-                                    .padding(horizontal = 8.dp, vertical = 3.dp),
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.active),
-                                    color = colors.success,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                            }
-                        }
-                        Spacer(Modifier.size(AsterSpacing.md))
-                        AsterDivider()
-                        Spacer(Modifier.size(AsterSpacing.md))
-                    }
-                    Text(
-                        text = stringResource(if (is_pgp_key) R.string.pgp_identity_fingerprint else R.string.identity_key_fingerprint),
-                        color = colors.text_tertiary,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.size(AsterSpacing.xs))
-                    Text(
-                        text = fingerprint,
-                        color = colors.text_primary,
-                        fontSize = 13.sp,
-                        fontFamily = FontFamily.Monospace,
-                    )
-                    Spacer(Modifier.size(AsterSpacing.sm))
-                    Text(
-                        text = stringResource(R.string.fingerprint_description),
-                        color = colors.text_tertiary,
-                        fontSize = 12.sp,
-                    )
+            val pgp_info = state.pgp_key_info
+            val algorithm_title = run {
+                val raw = pgp_info?.algorithm.orEmpty()
+                val base = raw.replace(Regex("[0-9]+"), "").uppercase().ifBlank { raw.uppercase() }
+                val size = when {
+                    (pgp_info?.key_size ?: 0) > 0 -> pgp_info!!.key_size
+                    else -> raw.filter { it.isDigit() }.toIntOrNull() ?: 0
+                }
+                when {
+                    base.isNotBlank() && size > 0 -> "$base-$size"
+                    base.isNotBlank() -> base
+                    else -> stringResource(if (is_pgp_key) R.string.pgp_identity_fingerprint else R.string.identity_key_fingerprint)
                 }
             }
-            v_gap(AsterSpacing.md)
-            AsterButton(
-                label = stringResource(R.string.copy_fingerprint),
-                onClick = {
-                    copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_fingerprint), fingerprint)
-                    Toast.makeText(context, context.getString(R.string.fingerprint_copied), Toast.LENGTH_SHORT).show()
-                },
-            )
-            v_gap(AsterSpacing.sm)
-            AsterSecondaryButton(
-                label = stringResource(R.string.export_public_key),
-                onClick = {
-                    scope.launch {
-                        val armored = vm.export_public_key_now()
-                        if (armored != null) {
-                            copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_public_key), armored)
-                            Toast.makeText(context, context.getString(R.string.public_key_copied), Toast.LENGTH_SHORT).show()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(SquircleShape(AsterRadius.xl))
+                    .background(colors.bg_card)
+                    .border(1.dp, colors.border_secondary, SquircleShape(AsterRadius.xl)),
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(AsterSpacing.lg),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = algorithm_title,
+                                color = colors.text_primary,
+                                fontSize = 15.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            val created = pgp_info?.created_at.orEmpty()
+                            if (created.isNotBlank()) {
+                                Spacer(Modifier.size(2.dp))
+                                Text(
+                                    text = stringResource(R.string.created_at_format, created.take(10)),
+                                    color = colors.text_muted,
+                                    fontSize = 12.sp,
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(AsterSpacing.sm))
+                        Row(
+                            modifier = Modifier
+                                .clip(SquircleShape(AsterRadius.pill))
+                                .background(colors.success.copy(alpha = 0.10f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Outlined.CheckCircle,
+                                contentDescription = null,
+                                tint = colors.success,
+                                modifier = Modifier.size(13.dp),
+                            )
+                            Text(
+                                text = stringResource(R.string.active),
+                                color = colors.success,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
                         }
                     }
-                },
-            )
+
+                    AsterDivider()
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
+                    ) {
+                        Text(
+                            text = fingerprint,
+                            color = colors.text_secondary,
+                            fontSize = 12.sp,
+                            letterSpacing = 0.5.sp,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier
+                                .weight(1f)
+                                .clip(SquircleShape(AsterRadius.md))
+                                .background(colors.bg_secondary)
+                                .border(1.dp, colors.border_primary, SquircleShape(AsterRadius.md))
+                                .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.sm),
+                        )
+                        AsterIconButton(
+                            icon = Icons.Outlined.ContentCopy,
+                            content_description = stringResource(R.string.copy_fingerprint_action),
+                            onClick = {
+                                copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_fingerprint), fingerprint)
+                                Toast.makeText(context, context.getString(R.string.fingerprint_copied), Toast.LENGTH_SHORT).show()
+                            },
+                            icon_size = 18,
+                        )
+                    }
+
+                    AsterDivider()
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.md),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
+                    ) {
+                        key_card_action(
+                            label = stringResource(R.string.export_public_key),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                scope.launch {
+                                    val armored = vm.export_public_key_now()
+                                    if (armored != null) {
+                                        copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_public_key), armored)
+                                        Toast.makeText(context, context.getString(R.string.public_key_copied), Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                        )
+                        key_card_action(
+                            label = stringResource(R.string.export_private_key_label),
+                            modifier = Modifier.weight(1f),
+                            onClick = {
+                                export_private_password = ""
+                                export_private_error = null
+                                show_export_private_dialog = true
+                            },
+                        )
+                        if (identity_public_b64 != null) {
+                            AsterIconButton(
+                                icon = Icons.Outlined.ContentCopy,
+                                content_description = stringResource(R.string.copy_public_key_action),
+                                onClick = {
+                                    copy_to_clipboard(context, context.getString(R.string.clipboard_label_identity_public_key), identity_public_b64)
+                                    Toast.makeText(context, context.getString(R.string.public_key_copied), Toast.LENGTH_SHORT).show()
+                                },
+                                icon_size = 18,
+                            )
+                        }
+                    }
+                }
+            }
             v_gap(AsterSpacing.sm)
-            AsterSecondaryButton(
-                label = stringResource(R.string.export_private_key_dialog_title),
-                onClick = {
-                    export_private_password = ""
-                    export_private_error = null
-                    show_export_private_dialog = true
-                },
+            Text(
+                text = stringResource(R.string.fingerprint_description),
+                color = colors.text_tertiary,
+                fontSize = 12.sp,
             )
             if (identity_public_b64 != null) {
                 v_gap(AsterSpacing.sm)
@@ -361,17 +428,53 @@ fun EncryptionScreen(
                 }
             }
         } else {
-            AsterCard(modifier = Modifier.fillMaxWidth()) {
-                Column(modifier = Modifier.padding(AsterSpacing.lg)) {
+            val dashed_color = colors.border_secondary
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(SquircleShape(AsterRadius.xl))
+                    .background(colors.bg_secondary)
+                    .drawBehind {
+                        val stroke_width = 1.dp.toPx()
+                        val radius_px = 14.dp.toPx()
+                        val inset = stroke_width / 2f
+                        drawRoundRect(
+                            color = dashed_color,
+                            topLeft = androidx.compose.ui.geometry.Offset(inset, inset),
+                            size = Size(size.width - stroke_width, size.height - stroke_width),
+                            cornerRadius = CornerRadius(radius_px, radius_px),
+                            style = Stroke(
+                                width = stroke_width,
+                                pathEffect = PathEffect.dashPathEffect(
+                                    floatArrayOf(6.dp.toPx(), 4.dp.toPx()),
+                                    0f,
+                                ),
+                            ),
+                        )
+                    },
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = AsterSpacing.xxl, horizontal = AsterSpacing.lg),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Key,
+                        contentDescription = null,
+                        tint = colors.text_muted,
+                        modifier = Modifier.size(24.dp),
+                    )
+                    Spacer(Modifier.size(AsterSpacing.sm))
                     Text(
                         text = stringResource(R.string.identity_key_unavailable),
-                        color = colors.text_tertiary,
+                        color = colors.text_muted,
                         fontSize = 13.sp,
                     )
                     Spacer(Modifier.size(AsterSpacing.xs))
                     Text(
                         text = stringResource(R.string.identity_key_unavailable_hint),
-                        color = colors.text_tertiary,
+                        color = colors.text_muted,
                         fontSize = 12.sp,
                     )
                 }
@@ -461,11 +564,13 @@ fun EncryptionScreen(
         v_gap(AsterSpacing.lg)
         section_label(stringResource(R.string.storage_format))
         if (prefs == null) {
-            Box(
-                modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
-                contentAlignment = Alignment.Center,
-            ) {
-                CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xl),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
+                }
             }
         } else {
             Column(
@@ -499,7 +604,7 @@ fun EncryptionScreen(
             val ks = state.keyserver_status
             if (prefs == null || enc == null || wkd == null || ks == null) {
                 Box(
-                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
+                    modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xl),
                     contentAlignment = Alignment.Center,
                 ) {
                     CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
@@ -791,6 +896,41 @@ fun EncryptionScreen(
                     )
                 }
             },
+        )
+    }
+}
+
+@Composable
+private fun key_card_action(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val colors = AsterMaterial.colors
+    Row(
+        modifier = modifier
+            .height(40.dp)
+            .clip(SquircleShape(AsterRadius.lg))
+            .background(colors.bg_secondary)
+            .border(1.dp, colors.border_primary, SquircleShape(AsterRadius.lg))
+            .clickable(onClick = onClick)
+            .padding(horizontal = AsterSpacing.md),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.FileDownload,
+            contentDescription = null,
+            tint = colors.text_primary,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(AsterSpacing.xs))
+        Text(
+            text = label,
+            color = colors.text_primary,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
         )
     }
 }

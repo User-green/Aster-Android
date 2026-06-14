@@ -58,6 +58,7 @@ data class LoginResponse(
     val encrypted_vault: String,
     val vault_nonce: String,
     val access_token: String? = null,
+    val refresh_token: String? = null,
     val needs_prekey_replenishment: Boolean = false,
     val switch_token: String? = null,
     val switch_token_expires_at: String? = null,
@@ -145,6 +146,7 @@ data class RegisterResponse(
     val email: String,
     val csrf_token: String,
     val access_token: String? = null,
+    val refresh_token: String? = null,
     val recovery_email_required: Boolean = false,
 )
 
@@ -152,6 +154,12 @@ data class RegisterResponse(
 data class RefreshResponse(
     val csrf_token: String,
     val access_token: String,
+    val refresh_token: String? = null,
+)
+
+@Serializable
+data class NativeRefreshRequest(
+    val refresh_token: String? = null,
 )
 
 @Serializable
@@ -201,7 +209,7 @@ interface AuthApi {
     suspend fun login(request: LoginRequest, trusted_device_token: String? = null): LoginResult
     suspend fun verify_totp_login(request: TotpLoginVerifyRequest): TotpVerifyOutcome
     suspend fun register(request: RegisterRequest): RegisterResponse
-    suspend fun refresh(): RefreshResponse
+    suspend fun refresh(refresh_token: String?): RefreshResponse
     suspend fun logout()
     suspend fun me(): UserInfo
     suspend fun get_vault(): VaultResponse
@@ -223,7 +231,7 @@ class AuthApiImpl(private val client: ApiClient) : AuthApi {
     override suspend fun login(request: LoginRequest, trusted_device_token: String?): LoginResult {
         val response = client.http.post("${client.base_url}$base/login") {
             contentType(ContentType.Application.Json)
-            if (!trusted_device_token.isNullOrBlank()) {
+            if (!trusted_device_token.isNullOrBlank() && is_safe_cookie_value(trusted_device_token)) {
                 header(HttpHeaders.Cookie, "aster_td=$trusted_device_token")
             }
             setBody(request)
@@ -241,7 +249,9 @@ class AuthApiImpl(private val client: ApiClient) : AuthApi {
         }
         val login_resp = client.json.decodeFromString<LoginResponse>(body_str)
         client.set_csrf(login_resp.csrf_token)
-        return LoginResult.Success(login_resp)
+        val refresh = login_resp.refresh_token
+            ?: parse_refresh_cookie(response.headers.getAll(HttpHeaders.SetCookie))
+        return LoginResult.Success(login_resp.copy(refresh_token = refresh))
     }
 
     override suspend fun verify_totp_login(request: TotpLoginVerifyRequest): TotpVerifyOutcome {
@@ -251,13 +261,44 @@ class AuthApiImpl(private val client: ApiClient) : AuthApi {
         }
         val body: LoginResponse = decode_or_throw(response)
         client.set_csrf(body.csrf_token)
-        val td_token = parse_trusted_device_cookie(response.headers.getAll(HttpHeaders.SetCookie))
-        return TotpVerifyOutcome(response = body, trusted_device_token = td_token)
+        val set_cookies = response.headers.getAll(HttpHeaders.SetCookie)
+        val td_token = parse_trusted_device_cookie(set_cookies)
+        val refresh = body.refresh_token ?: parse_refresh_cookie(set_cookies)
+        return TotpVerifyOutcome(
+            response = body.copy(refresh_token = refresh),
+            trusted_device_token = td_token,
+        )
     }
 
     private fun parse_trusted_device_cookie(set_cookies: List<String>?): String? {
         if (set_cookies.isNullOrEmpty()) return null
         val needle = "aster_td="
+        for (raw in set_cookies) {
+            var idx = raw.indexOf(needle)
+            while (idx >= 0) {
+                val before = if (idx == 0) ' ' else raw[idx - 1]
+                if (before == ' ' || before == ',' || before == ';') {
+                    val start = idx + needle.length
+                    var end = start
+                    while (end < raw.length && raw[end] != ';' && raw[end] != ',' && !raw[end].isWhitespace()) {
+                        end++
+                    }
+                    val value = raw.substring(start, end).trim()
+                    if (value.isNotEmpty()) {
+                        return value
+                    }
+                }
+                idx = raw.indexOf(needle, idx + 1)
+            }
+        }
+        return null
+    }
+
+    private fun parse_refresh_cookie(set_cookies: List<String>?): String? =
+        parse_cookie_value(set_cookies, "aster_refresh=")
+
+    private fun parse_cookie_value(set_cookies: List<String>?, needle: String): String? {
+        if (set_cookies.isNullOrEmpty()) return null
         for (raw in set_cookies) {
             var idx = raw.indexOf(needle)
             while (idx >= 0) {
@@ -286,18 +327,22 @@ class AuthApiImpl(private val client: ApiClient) : AuthApi {
         }
         val body: RegisterResponse = decode_or_throw(response)
         client.set_csrf(body.csrf_token)
-        return body
+        val refresh = body.refresh_token
+            ?: parse_refresh_cookie(response.headers.getAll(HttpHeaders.SetCookie))
+        return body.copy(refresh_token = refresh)
     }
 
-    override suspend fun refresh(): RefreshResponse {
+    override suspend fun refresh(refresh_token: String?): RefreshResponse {
         val response = client.http.post("${client.base_url}$base/refresh") {
             contentType(ContentType.Application.Json)
             client.get_csrf()?.let { header("X-CSRF-Token", it) }
-            setBody("{}")
+            setBody(NativeRefreshRequest(refresh_token))
         }
         val body: RefreshResponse = decode_or_throw(response)
         client.set_csrf(body.csrf_token)
-        return body
+        val rotated = body.refresh_token
+            ?: parse_refresh_cookie(response.headers.getAll(HttpHeaders.SetCookie))
+        return body.copy(refresh_token = rotated)
     }
 
     override suspend fun logout() {
@@ -354,4 +399,7 @@ class AuthApiImpl(private val client: ApiClient) : AuthApi {
     }
 
     private fun response_is_success(code: Int) = code in 200..299
+
+    private fun is_safe_cookie_value(value: String): Boolean =
+        value.all { it.code in 0x21..0x7e && it != ';' && it != ',' }
 }

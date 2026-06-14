@@ -98,6 +98,23 @@ class AuthRepository @Inject constructor(
     private val _is_signed_in = MutableStateFlow(token_store.access_token != null)
     val is_signed_in: StateFlow<Boolean> = _is_signed_in.asStateFlow()
 
+    private val unauthorized_check_running = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    suspend fun handle_unauthorized_signal() {
+        if (!_is_signed_in.value) return
+        if (!unauthorized_check_running.compareAndSet(false, true)) return
+        try {
+            auth_api.me()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: ApiError.UnauthorizedError) {
+            logout()
+        } catch (_: Throwable) {
+        } finally {
+            unauthorized_check_running.set(false)
+        }
+    }
+
     suspend fun login(email: String, password: String, captcha_token: String? = null): Result<LoginOutcome> = runCatching {
         val normalized = normalize_email(email)
         val trusted_token = trusted_device_store.get_token(normalized)
@@ -171,11 +188,12 @@ class AuthRepository @Inject constructor(
         val access = login_resp.access_token ?: throw ApiError.UnknownError("missing access_token")
         val previous_user_id = session_key_store.get_user_id()
         if (previous_user_id != null && previous_user_id != login_resp.user_id) {
+            session_key_store.clear()
             runCatching {
                 withTimeoutOrNull(3_000L) { database.decrypted_mail_dao().clear_all() }
             }
         }
-        token_store.save(access, access)
+        token_store.save(access, login_resp.refresh_token ?: access)
         api_client.invalidate_bearer_cache()
         session_key_store.put(password_hash_bytes)
         session_key_store.put_passphrase(password_bytes)
@@ -310,7 +328,7 @@ class AuthRepository @Inject constructor(
 
         val access = register_resp.access_token
             ?: throw ApiError.UnknownError("missing access_token on register")
-        token_store.save(access, access)
+        token_store.save(access, register_resp.refresh_token ?: access)
         api_client.invalidate_bearer_cache()
         session_key_store.put(password_hash_bytes)
         session_key_store.put_passphrase(password.toByteArray(Charsets.UTF_8))
@@ -407,7 +425,13 @@ class AuthRepository @Inject constructor(
         val current_password_bytes = current_password.toByteArray(Charsets.UTF_8)
         val new_password_bytes = new_password.toByteArray(Charsets.UTF_8)
 
-        val stored_salt = session_key_store.get_password_salt()
+        val server_salt = session_key_store.get_user_email()?.let { email ->
+            runCatching {
+                base64_decode(auth_api.get_user_salt(CryptoNative.hash_email(email)).salt)
+            }.getOrNull()
+        }
+        val stored_salt = server_salt
+            ?: session_key_store.get_password_salt()
             ?: throw ApiError.UnknownError("session expired â€” please sign in again")
 
         val current_password_hash = CryptoNative.derive_pbkdf2_hash(
@@ -477,6 +501,7 @@ class AuthRepository @Inject constructor(
         current_password_hash.fill(0)
         new_password_hash.fill(0)
         current_password_bytes.fill(0)
+        new_password_bytes.fill(0)
         stored_salt.fill(0)
     }
 

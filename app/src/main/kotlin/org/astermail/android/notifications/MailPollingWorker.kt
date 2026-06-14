@@ -88,10 +88,11 @@ class MailPollingWorker(
             }
             override suspend fun refresh(): BearerTokens? {
                 return try {
-                    val response = AuthApiImpl(client).refresh()
-                    val existing_refresh = token_store.refresh_token ?: response.access_token
-                    token_store.save(response.access_token, existing_refresh)
-                    BearerTokens(response.access_token, existing_refresh)
+                    val current_refresh = token_store.refresh_token
+                    val response = AuthApiImpl(client).refresh(current_refresh)
+                    val new_refresh = response.refresh_token ?: current_refresh ?: response.access_token
+                    token_store.save(response.access_token, new_refresh)
+                    BearerTokens(response.access_token, new_refresh)
                 } catch (t: Throwable) {
                     val is_definitive_auth_failure = t is ApiError.UnauthorizedError ||
                         t is ApiError.ForbiddenError
@@ -147,18 +148,20 @@ class MailPollingWorker(
     }
 
     private suspend fun notify_for_new_mail(arrived: Int) {
-        if (org.astermail.android.security.LockdownStore.is_enabled(context)) {
-            show_generic(context, arrived)
-            return
-        }
-        val repo = try {
+        val entry = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 MailRepositoryEntryPoint::class.java,
-            ).mail_repository()
+            )
         } catch (_: Throwable) {
             null
         }
+        val app_lock_configured = runCatching { entry?.app_lock_store()?.is_configured() }.getOrNull() == true
+        if (org.astermail.android.security.LockdownStore.is_enabled(context) || app_lock_configured) {
+            show_generic(context, arrived)
+            return
+        }
+        val repo = entry?.mail_repository()
         if (repo == null) {
             show_generic(context, arrived)
             return
@@ -190,6 +193,7 @@ class MailPollingWorker(
     @InstallIn(SingletonComponent::class)
     interface MailRepositoryEntryPoint {
         fun mail_repository(): MailRepository
+        fun app_lock_store(): org.astermail.android.security.AppLockStore
     }
 
     companion object {

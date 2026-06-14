@@ -178,8 +178,8 @@ class RecoveryViewModel @Inject constructor(
                     CryptoNative.derive_pbkdf2_hash(password_bytes, new_salt, PBKDF2_ITERATIONS)
                 }
 
-                val new_encrypted_vault = withContext(Dispatchers.Default) {
-                    CryptoNative.encrypt_vault(vault_bytes, new_password_hash)
+                val new_envelope = withContext(Dispatchers.Default) {
+                    CryptoNative.encrypt_vault_with_password(vault_bytes, password_bytes)
                 }
 
                 _state.value = _state.value.copy(processing_status = ctx.getString(R.string.status_generating_codes))
@@ -203,8 +203,8 @@ class RecoveryViewModel @Inject constructor(
                         recovery_token = token,
                         new_password_hash = base64_encode(new_password_hash),
                         new_password_salt = base64_encode(new_salt),
-                        new_encrypted_vault = base64_encode(new_encrypted_vault),
-                        new_vault_nonce = base64_encode(ByteArray(1) { 1 }),
+                        new_encrypted_vault = base64_encode(new_envelope.encrypted_vault),
+                        new_vault_nonce = base64_encode(new_envelope.vault_nonce),
                         new_recovery_shares = shares,
                         new_encrypted_vault_backup = backup.encrypted_data,
                         new_vault_backup_nonce = backup.nonce,

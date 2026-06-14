@@ -46,14 +46,20 @@ class UnifiedPushReceiver : MessagingReceiver() {
         val encrypted_envelope = obj.optString("encrypted_envelope", "").takeIf { it.isNotBlank() }
             ?: return false
         val envelope_nonce = obj.optString("envelope_nonce", "").takeIf { it.isNotBlank() }
-        val repo = try {
+        val entry = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
                 MailPollingWorker.MailRepositoryEntryPoint::class.java,
-            ).mail_repository()
+            )
         } catch (_: Throwable) {
             return false
         }
+        val app_lock_configured = runCatching { entry.app_lock_store().is_configured() }.getOrNull() == true
+        if (org.astermail.android.security.LockdownStore.is_enabled(context) || app_lock_configured) {
+            MailPollingWorker.show_generic(context, 1)
+            return true
+        }
+        val repo = entry.mail_repository()
         val envelope = repo.decrypt_envelope_public(encrypted_envelope, envelope_nonce) ?: return false
         val sender = envelope.from_name.takeIf { it.isNotBlank() } ?: envelope.from_email
         val subject = envelope.subject
