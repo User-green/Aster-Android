@@ -91,10 +91,10 @@ object StorageModule {
         context: Context,
         meta: SharedPreferences,
     ): AsterDatabase {
-        net.sqlcipher.database.SQLiteDatabase.loadLibs(context)
+        System.loadLibrary("sqlcipher")
         val builder = Room.databaseBuilder(context, AsterDatabase::class.java, db_name)
         builder.openHelperFactory(
-            net.sqlcipher.database.SupportFactory(db_passphrase(meta), null, false),
+            net.zetetic.database.sqlcipher.SupportOpenHelperFactory(db_passphrase(meta), null, false),
         )
         builder.fallbackToDestructiveMigration()
         val db = builder.build()
