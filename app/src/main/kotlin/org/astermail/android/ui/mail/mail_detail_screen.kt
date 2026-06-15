@@ -132,6 +132,7 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
@@ -139,6 +140,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -1564,6 +1566,13 @@ private fun reply_action_row(
     on_forward: () -> Unit,
 ) {
     val colors = AsterMaterial.colors
+    val config = LocalConfiguration.current
+    var label_size by remember(config) { mutableStateOf(REPLY_ACTION_LABEL_MAX) }
+    val on_label_overflow: () -> Unit = {
+        if (label_size.value > REPLY_ACTION_LABEL_MIN.value) {
+            label_size = (label_size.value - 1f).sp
+        }
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1575,6 +1584,8 @@ private fun reply_action_row(
             label = stringResource(R.string.reply),
             bg = colors.accent_blue,
             fg = androidx.compose.ui.graphics.Color.White,
+            label_size = label_size,
+            on_label_overflow = on_label_overflow,
             on_click = on_reply,
             modifier = Modifier.weight(1f),
         )
@@ -1583,6 +1594,8 @@ private fun reply_action_row(
             label = stringResource(R.string.reply_all),
             bg = colors.bg_card,
             fg = colors.text_primary,
+            label_size = label_size,
+            on_label_overflow = on_label_overflow,
             on_click = on_reply_all,
             modifier = Modifier.weight(1f),
         )
@@ -1591,11 +1604,16 @@ private fun reply_action_row(
             label = stringResource(R.string.forward),
             bg = colors.bg_card,
             fg = colors.text_primary,
+            label_size = label_size,
+            on_label_overflow = on_label_overflow,
             on_click = on_forward,
             modifier = Modifier.weight(1f),
         )
     }
 }
+
+private val REPLY_ACTION_LABEL_MAX = 14.sp
+private val REPLY_ACTION_LABEL_MIN = 9.sp
 
 @Composable
 private fun reply_action_button(
@@ -1603,6 +1621,8 @@ private fun reply_action_button(
     label: String,
     bg: androidx.compose.ui.graphics.Color,
     fg: androidx.compose.ui.graphics.Color,
+    label_size: TextUnit,
+    on_label_overflow: () -> Unit,
     on_click: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -1611,7 +1631,7 @@ private fun reply_action_button(
             .clip(SquircleShape(999.dp))
             .background(bg)
             .clickable(onClick = on_click)
-            .padding(vertical = 10.dp),
+            .padding(vertical = 10.dp, horizontal = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1625,8 +1645,13 @@ private fun reply_action_button(
         Text(
             text = label,
             color = fg,
-            fontSize = 14.sp,
+            fontSize = label_size,
             fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false),
+            onTextLayout = { result -> if (result.hasVisualOverflow) on_label_overflow() },
         )
     }
 }
