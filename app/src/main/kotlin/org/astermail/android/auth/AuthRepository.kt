@@ -57,6 +57,7 @@ import org.astermail.android.storage.AccountStore
 import org.astermail.android.storage.SessionKeyStore
 import org.astermail.android.storage.SessionSnapshotStore
 import org.astermail.android.storage.StoredAccount
+import org.astermail.android.notifications.UnifiedPushState
 import org.astermail.android.security.LockdownStore
 import org.astermail.android.storage.ThemeStore
 import org.astermail.android.storage.TokenStore
@@ -259,6 +260,7 @@ class AuthRepository @Inject constructor(
         )
         runCatching { save_session_snapshot(login_resp.user_id) }
         _is_signed_in.value = true
+        runCatching { UnifiedPushState.try_register(context) }
     }
 
     suspend fun register(email: String, password: String, captcha_token: String? = null): Result<RegisterSuccess> = runCatching {
@@ -360,6 +362,7 @@ class AuthRepository @Inject constructor(
         )
         save_session_snapshot(register_resp.user_id)
         _is_signed_in.value = true
+        runCatching { UnifiedPushState.try_register(context) }
         RegisterSuccess(recovery = recovery)
     }
 

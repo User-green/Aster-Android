@@ -29,8 +29,8 @@ android {
         applicationId = "org.astermail.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 79
-        versionName = "0.6.72"
+        versionCode = 80
+        versionName = "0.6.73"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -90,6 +90,12 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
+    }
+}
+
 dependencies {
     implementation(project(":core-crypto"))
     implementation(project(":core-api"))
@@ -137,6 +143,10 @@ dependencies {
     implementation(libs.bouncycastle.provider)
     implementation(libs.bouncycastle.pgp)
     implementation(libs.jsoup)
+    "fullImplementation"(platform(libs.firebase.bom))
+    "fullImplementation"(libs.firebase.messaging)
+    "fullImplementation"(libs.kotlinx.coroutines.play.services)
+    "fullImplementation"(libs.unifiedpush.efcmd)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.process)
@@ -149,4 +159,8 @@ dependencies {
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
+}
+
+if (!is_fdroid_build) {
+    apply(plugin = "com.google.gms.google-services")
 }
