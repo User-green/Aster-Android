@@ -43,6 +43,10 @@ jobs:
           "$apksigner" verify --print-certs Aster-Mail-fdroid.apk
           rm -f release.jks
 
+      - name: cleanup keystore
+        if: always()
+        run: rm -f release.jks
+
       - uses: actions/upload-artifact@v4
         with:
           name: fdroid-signed
