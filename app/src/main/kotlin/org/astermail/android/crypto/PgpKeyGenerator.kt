@@ -23,23 +23,29 @@ package org.astermail.android.crypto
 
 import java.io.ByteArrayOutputStream
 import java.math.BigInteger
-import java.security.KeyPairGenerator
+import java.security.SecureRandom
 import java.security.Security
 import java.util.Date
+import java.util.Locale
 import org.bouncycastle.bcpg.ArmoredOutputStream
 import org.bouncycastle.bcpg.HashAlgorithmTags
+import org.bouncycastle.bcpg.PublicKeyAlgorithmTags
+import org.bouncycastle.bcpg.PublicKeyPacket
 import org.bouncycastle.bcpg.SymmetricKeyAlgorithmTags
 import org.bouncycastle.bcpg.sig.Features
 import org.bouncycastle.bcpg.sig.KeyFlags
+import org.bouncycastle.crypto.generators.Ed25519KeyPairGenerator
+import org.bouncycastle.crypto.generators.X25519KeyPairGenerator
+import org.bouncycastle.crypto.params.Ed25519KeyGenerationParameters
+import org.bouncycastle.crypto.params.X25519KeyGenerationParameters
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openpgp.PGPKeyRingGenerator
-import org.bouncycastle.openpgp.PGPPublicKey
 import org.bouncycastle.openpgp.PGPSignature
 import org.bouncycastle.openpgp.PGPSignatureSubpacketGenerator
-import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder
-import org.bouncycastle.openpgp.operator.jcajce.JcaPGPDigestCalculatorProviderBuilder
-import org.bouncycastle.openpgp.operator.jcajce.JcaPGPKeyPair
-import org.bouncycastle.openpgp.operator.jcajce.JcePBESecretKeyEncryptorBuilder
+import org.bouncycastle.openpgp.operator.bc.BcPBESecretKeyEncryptorBuilder
+import org.bouncycastle.openpgp.operator.bc.BcPGPContentSignerBuilder
+import org.bouncycastle.openpgp.operator.bc.BcPGPDigestCalculatorProvider
+import org.bouncycastle.openpgp.operator.bc.BcPGPKeyPair
 
 data class PgpKeyPairResult(
     val armored_public_key: String,
@@ -60,41 +66,51 @@ object PgpKeyGenerator {
         email: String,
         passphrase: CharArray,
     ): PgpKeyPairResult {
-        val provider = BouncyCastleProvider.PROVIDER_NAME
-        val rsa_gen = KeyPairGenerator.getInstance("RSA", provider)
-        rsa_gen.initialize(4096)
-
-        val master_pair = rsa_gen.generateKeyPair()
-        val sub_pair = rsa_gen.generateKeyPair()
-
+        val rng = SecureRandom()
         val now = Date()
-        val master_pgp = JcaPGPKeyPair(PGPPublicKey.RSA_GENERAL, master_pair, now)
-        val sub_pgp = JcaPGPKeyPair(PGPPublicKey.RSA_GENERAL, sub_pair, now)
 
-        val digest_calc = JcaPGPDigestCalculatorProviderBuilder()
-            .setProvider(provider)
-            .build()
-            .get(HashAlgorithmTags.SHA256)
+        val master_gen = Ed25519KeyPairGenerator()
+        master_gen.init(Ed25519KeyGenerationParameters(rng))
+        val master_raw = master_gen.generateKeyPair()
 
-        val signer = JcaPGPContentSignerBuilder(
+        val sub_gen = X25519KeyPairGenerator()
+        sub_gen.init(X25519KeyGenerationParameters(rng))
+        val sub_raw = sub_gen.generateKeyPair()
+
+        val master_pgp = BcPGPKeyPair(
+            PublicKeyPacket.VERSION_4,
+            PublicKeyAlgorithmTags.EDDSA_LEGACY,
+            master_raw,
+            now,
+        )
+        val sub_pgp = BcPGPKeyPair(
+            PublicKeyPacket.VERSION_4,
+            PublicKeyAlgorithmTags.ECDH,
+            sub_raw,
+            now,
+        )
+
+        val checksum_calc = BcPGPDigestCalculatorProvider().get(HashAlgorithmTags.SHA1)
+        val s2k_calc = BcPGPDigestCalculatorProvider().get(HashAlgorithmTags.SHA256)
+
+        val signer = BcPGPContentSignerBuilder(
             master_pgp.publicKey.algorithm,
-            HashAlgorithmTags.SHA256,
-        ).setProvider(provider)
+            HashAlgorithmTags.SHA512,
+        )
 
-        val encryptor = JcePBESecretKeyEncryptorBuilder(
+        val encryptor = BcPBESecretKeyEncryptorBuilder(
             SymmetricKeyAlgorithmTags.AES_256,
-            digest_calc,
-        ).setProvider(provider)
-            .build(passphrase)
+            s2k_calc,
+        ).build(passphrase)
 
         val master_subpackets = PGPSignatureSubpacketGenerator().apply {
             setKeyFlags(false, KeyFlags.SIGN_DATA or KeyFlags.CERTIFY_OTHER)
             setPreferredHashAlgorithms(
                 false,
                 intArrayOf(
-                    HashAlgorithmTags.SHA256,
-                    HashAlgorithmTags.SHA384,
                     HashAlgorithmTags.SHA512,
+                    HashAlgorithmTags.SHA384,
+                    HashAlgorithmTags.SHA256,
                 ),
             )
             setPreferredSymmetricAlgorithms(
@@ -116,7 +132,7 @@ object PgpKeyGenerator {
             PGPSignature.POSITIVE_CERTIFICATION,
             master_pgp,
             "$name <$email>",
-            digest_calc,
+            checksum_calc,
             master_subpackets.generate(),
             null,
             signer,
@@ -138,7 +154,7 @@ object PgpKeyGenerator {
             BigInteger(1, master_pgp.publicKey.fingerprint),
         )
 
-        val key_id = String.format(java.util.Locale.US, "%016x", master_pgp.publicKey.keyID)
+        val key_id = String.format(Locale.US, "%016x", master_pgp.publicKey.keyID)
 
         return PgpKeyPairResult(
             armored_public_key = public_out.toString(Charsets.UTF_8.name()),
