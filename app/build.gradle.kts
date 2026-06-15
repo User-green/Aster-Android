@@ -90,6 +90,12 @@ android {
     }
 }
 
+configurations.all {
+    resolutionStrategy {
+        force("org.jetbrains.kotlin:kotlin-stdlib:${libs.versions.kotlin.get()}")
+    }
+}
+
 dependencies {
     implementation(project(":core-crypto"))
     implementation(project(":core-api"))
@@ -140,6 +146,7 @@ dependencies {
     "fullImplementation"(platform(libs.firebase.bom))
     "fullImplementation"(libs.firebase.messaging)
     "fullImplementation"(libs.kotlinx.coroutines.play.services)
+    "fullImplementation"(libs.unifiedpush.efcmd)
     implementation(libs.androidx.security.crypto)
     implementation(libs.androidx.biometric)
     implementation(libs.androidx.lifecycle.process)

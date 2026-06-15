@@ -27,6 +27,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.call.body
+import io.ktor.client.request.get
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -55,6 +56,11 @@ object UnifiedPushState {
         val user_agent: String?,
     )
 
+    @Serializable
+    private data class VapidKeyResponse(
+        val public_key: String? = null,
+    )
+
     @EntryPoint
     @InstallIn(SingletonComponent::class)
     interface ApiClientEntryPoint {
@@ -81,16 +87,36 @@ object UnifiedPushState {
     }
 
     fun try_register(context: Context) {
-        runCatching {
-            val distributors = UnifiedPush.getDistributors(context)
-            if (distributors.isEmpty()) return@runCatching
-            val current = UnifiedPush.getAckDistributor(context)
-            if (current == null) {
-                UnifiedPush.saveDistributor(context, distributors.first())
+        scope.launch {
+            runCatching {
+                val distributors = UnifiedPush.getDistributors(context)
+                if (distributors.isEmpty()) return@launch
+                if (UnifiedPush.getAckDistributor(context) == null) {
+                    UnifiedPush.saveDistributor(context, distributors.first())
+                }
+                UnifiedPush.register(context, vapid = get_vapid_public_key(context))
             }
-            UnifiedPush.register(context)
         }
     }
+
+    fun reregister_with_vapid(context: Context) {
+        scope.launch {
+            runCatching {
+                val vapid = get_vapid_public_key(context) ?: return@launch
+                UnifiedPush.register(context, vapid = vapid)
+            }
+        }
+    }
+
+    private suspend fun get_vapid_public_key(context: Context): String? = runCatching {
+        val client = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            ApiClientEntryPoint::class.java,
+        ).api_client()
+        client.http.get("${client.base_url}/api/sync/v1/web-push/vapid-key")
+            .body<VapidKeyResponse>()
+            .public_key
+    }.getOrNull()
 
     fun unregister(context: Context) {
         runCatching { UnifiedPush.unregister(context) }

@@ -23,18 +23,18 @@ package org.astermail.android.notifications
 
 import android.content.Context
 import dagger.hilt.android.EntryPointAccessors
-import org.astermail.android.mail.MailRepository
 import org.json.JSONObject
-import org.unifiedpush.android.connector.MessagingReceiver
+import org.unifiedpush.android.connector.FailedReason
+import org.unifiedpush.android.connector.PushService
 import org.unifiedpush.android.connector.data.PushEndpoint
 import org.unifiedpush.android.connector.data.PushMessage
 
-class UnifiedPushReceiver : MessagingReceiver() {
+class AsterPushService : PushService() {
 
-    override fun onMessage(context: Context, message: PushMessage, instance: String) {
-        val handled = runCatching { handle_push(context, message) }.getOrDefault(false)
+    override fun onMessage(message: PushMessage, instance: String) {
+        val handled = runCatching { handle_push(this, message) }.getOrDefault(false)
         if (!handled) {
-            MailPollingWorker.show_generic(context, 1)
+            MailPollingWorker.show_generic(this, 1)
         }
     }
 
@@ -79,12 +79,12 @@ class UnifiedPushReceiver : MessagingReceiver() {
         return true
     }
 
-    override fun onNewEndpoint(context: Context, endpoint: PushEndpoint, instance: String) {
-        UnifiedPushState.save_endpoint(context, endpoint.url)
+    override fun onNewEndpoint(endpoint: PushEndpoint, instance: String) {
+        UnifiedPushState.save_endpoint(this, endpoint.url)
         val keys = endpoint.pubKeySet
         if (keys != null) {
             UnifiedPushState.register_with_backend(
-                context = context,
+                context = this,
                 endpoint_url = endpoint.url,
                 p256dh = keys.pubKey,
                 auth = keys.auth,
@@ -92,15 +92,15 @@ class UnifiedPushReceiver : MessagingReceiver() {
         }
     }
 
-    override fun onRegistrationFailed(
-        context: Context,
-        reason: org.unifiedpush.android.connector.FailedReason,
-        instance: String,
-    ) {
-        UnifiedPushState.clear_endpoint(context)
+    override fun onRegistrationFailed(reason: FailedReason, instance: String) {
+        if (reason == FailedReason.VAPID_REQUIRED) {
+            UnifiedPushState.reregister_with_vapid(this)
+        } else {
+            UnifiedPushState.clear_endpoint(this)
+        }
     }
 
-    override fun onUnregistered(context: Context, instance: String) {
-        UnifiedPushState.clear_endpoint(context)
+    override fun onUnregistered(instance: String) {
+        UnifiedPushState.clear_endpoint(this)
     }
 }

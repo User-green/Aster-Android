@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:tools="http://schemas.android.com/tools"
+    xmlns:android="http://schemas.android.com/apk/res/android">
     <application>
-        <service
-            android:name=".notifications.FcmService"
-            android:exported="false">
+        <receiver
+            android:enabled="true"
+            android:name=".notifications.EmbeddedDistributor"
+            android:exported="false"
+            tools:ignore="Instantiatable">
             <intent-filter>
-                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+                <action android:name="org.unifiedpush.android.distributor.feature.BYTES_MESSAGE" />
+                <action android:name="org.unifiedpush.android.distributor.REGISTER" />
+                <action android:name="org.unifiedpush.android.distributor.UNREGISTER" />
             </intent-filter>
-        </service>
+        </receiver>
     </application>
 </manifest>

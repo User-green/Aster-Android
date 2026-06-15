@@ -21,18 +21,6 @@
 
 package org.astermail.android.notifications
 
-import com.google.firebase.messaging.FirebaseMessagingService
-import com.google.firebase.messaging.RemoteMessage
+import org.unifiedpush.android.embedded_fcm_distributor.EmbeddedDistributorReceiver
 
-class FcmService : FirebaseMessagingService() {
-
-    override fun onMessageReceived(remote_message: RemoteMessage) {
-        if (remote_message.data["type"] == "wake") {
-            MailPollingWorker.enqueue_immediate(applicationContext)
-        }
-    }
-
-    override fun onNewToken(token: String) {
-        FcmTokenManager.register(applicationContext, token)
-    }
-}
+class EmbeddedDistributor : EmbeddedDistributorReceiver()
