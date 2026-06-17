@@ -2763,8 +2763,17 @@ $dark_css
       }
     }
   }
-  function report_h(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT:'+(m.offsetHeight))}
-  function report_h_exact(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT_EXACT:'+(m.offsetHeight))}
+  function measure_h(){
+    var m=document.getElementById('m');
+    var base=m?m.offsetHeight:0;
+    if(document.documentElement.getAttribute('data-nl'))return base;
+    var de=document.documentElement;var b=document.body;var h=base;
+    if(de)h=Math.max(h,de.scrollHeight,de.offsetHeight);
+    if(b)h=Math.max(h,b.scrollHeight,b.offsetHeight);
+    return h+4;
+  }
+  function report_h(){if(document.getElementById('m'))console.log('ASTER_HEIGHT:'+measure_h())}
+  function report_h_exact(){if(document.getElementById('m'))console.log('ASTER_HEIGHT_EXACT:'+measure_h())}
   function linkify_text_nodes(root){
     var url_re=/((?:https?:\/\/|www\.)[^\s<>"']+[^\s<>"'.,;:!?)\]}])|([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
     var skip_tags={A:1,SCRIPT:1,STYLE:1,TEXTAREA:1,CODE:1,PRE:1,BUTTON:1};
@@ -2822,7 +2831,7 @@ $dark_css
       }
     }
     aster_fit_scale=scale2;
-    console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight*scale2)));
+    console.log('ASTER_HEIGHT_EXACT:'+(Math.round(measure_h()*scale2)));
   }
   window.__aster_fit=aster_fit;
   try{
@@ -3216,7 +3225,7 @@ $dark_css
                     web_view.postDelayed({
                         if (!has_measured) {
                             web_view.evaluateJavascript(
-                                "(function(){var m=document.getElementById('m');if(!m)return 0;var br=m.getBoundingClientRect();return Math.round(br.height);})()",
+                                "(function(){var m=document.getElementById('m');if(!m)return 0;var h=Math.round(m.getBoundingClientRect().height);if(!document.documentElement.getAttribute('data-nl')){var de=document.documentElement;var b=document.body;if(de)h=Math.max(h,de.scrollHeight);if(b)h=Math.max(h,b.scrollHeight);h+=4;}return h;})()",
                             ) { result ->
                                 val parsed = result?.trim()?.removeSurrounding("\"")?.toIntOrNull() ?: 0
                                 if (parsed > 0) {
