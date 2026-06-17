@@ -32,6 +32,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.content.consume
@@ -133,6 +134,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.OffsetMapping
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.TransformedText
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
@@ -335,6 +337,7 @@ fun ComposeScreen(
     var scheduled_at_iso by remember { mutableStateOf<String?>(null) }
     var expiring by remember { mutableStateOf(false) }
     var expires_at_iso by remember { mutableStateOf<String?>(null) }
+    var expiry_password by remember { mutableStateOf<String?>(null) }
     var show_expiring_sheet by remember { mutableStateOf(false) }
     var to_chips_set by remember { mutableStateOf(false) }
     var subject_set by remember { mutableStateOf(false) }
@@ -849,6 +852,7 @@ fun ComposeScreen(
                 sender_email = snapshot_from,
                 sender_display_name = display_name,
                 expires_at = expires_at_iso,
+                expiry_password = expiry_password,
                 attachments = attachment_payloads,
                 sender_alias_hash = if (snapshot_from != user_email) alias_hash_map[snapshot_from]?.takeIf { it.isNotBlank() } else null,
                 suppress_branding = suppress_branding,
@@ -938,6 +942,7 @@ fun ComposeScreen(
                     sender_email = snap_from,
                     sender_display_name = settings_state.user?.display_name,
                     expires_at = expires_at_iso,
+                    expiry_password = expiry_password,
                     attachments = attachment_payloads,
                     sender_alias_hash = if (snap_from != user_email) alias_hash_map[snap_from]?.takeIf { it.isNotBlank() } else null,
                     suppress_branding = suppress_branding,
@@ -1487,6 +1492,7 @@ fun ComposeScreen(
                 if (expiring) {
                     expiring = false
                     expires_at_iso = null
+                    expiry_password = null
                 } else {
                     show_overflow_sheet = false
                     show_expiring_sheet = true
@@ -1567,10 +1573,11 @@ fun ComposeScreen(
     if (show_expiring_sheet) {
         ExpiringSheet(
             on_close = { show_expiring_sheet = false },
-            on_pick = { hours, label ->
+            on_pick = { hours, label, password ->
                 show_expiring_sheet = false
                 val expires = java.time.ZonedDateTime.now(java.time.ZoneOffset.UTC).plusHours(hours.toLong())
                 expires_at_iso = java.time.format.DateTimeFormatter.ISO_INSTANT.format(expires.toInstant())
+                expiry_password = password
                 expiring = true
                 Toast.makeText(context, context.getString(R.string.message_expires_in, label), Toast.LENGTH_SHORT).show()
             },
@@ -2636,10 +2643,12 @@ private fun GhostAliasSheet(
 @Composable
 private fun ExpiringSheet(
     on_close: () -> Unit,
-    on_pick: (hours: Int, label: String) -> Unit,
+    on_pick: (hours: Int, label: String, password: String?) -> Unit,
 ) {
     val colors = AsterMaterial.colors
     val state = rememberModalBottomSheetState()
+    var password by remember { mutableStateOf("") }
+    val password_arg = password.trim().ifBlank { null }
     ModalBottomSheet(
         onDismissRequest = on_close,
         sheetState = state,
@@ -2676,10 +2685,53 @@ private fun ExpiringSheet(
             val one_hour_label = stringResource(R.string.duration_one_hour)
             val one_day_label = stringResource(R.string.duration_one_day)
             val seven_days_label = stringResource(R.string.duration_n_days, 7)
-            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_hour), colors.text_primary) { on_pick(1, one_hour_label) }
-            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_day), colors.text_primary) { on_pick(24, one_day_label) }
-            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_days, 7), colors.text_primary) { on_pick(24 * 7, seven_days_label) }
+            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_hour), colors.text_primary) { on_pick(1, one_hour_label, password_arg) }
+            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_day), colors.text_primary) { on_pick(24, one_day_label, password_arg) }
+            sheet_row(Icons.Outlined.LockClock, stringResource(R.string.expires_in_days, 7), colors.text_primary) { on_pick(24 * 7, seven_days_label, password_arg) }
             Spacer(Modifier.height(AsterSpacing.md))
+            Text(
+                text = stringResource(R.string.expiry_password_label),
+                color = colors.text_primary,
+                fontWeight = FontWeight.Medium,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(start = AsterSpacing.sm),
+            )
+            Text(
+                text = stringResource(R.string.expiry_password_subtitle),
+                color = colors.text_muted,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = AsterSpacing.sm, end = AsterSpacing.sm, top = 2.dp, bottom = AsterSpacing.xs),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AsterSpacing.sm)
+                    .clip(SquircleShape(10.dp))
+                    .border(1.dp, colors.border_secondary, SquircleShape(10.dp))
+                    .background(colors.bg_secondary)
+                    .padding(horizontal = AsterSpacing.md, vertical = 12.dp),
+            ) {
+                BasicTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    textStyle = MaterialTheme.typography.bodyLarge.copy(color = colors.text_primary),
+                    cursorBrush = androidx.compose.ui.graphics.SolidColor(colors.accent_blue),
+                    modifier = Modifier.fillMaxWidth(),
+                    decorationBox = { inner ->
+                        if (password.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.expiry_password_label),
+                                color = colors.text_muted,
+                                style = MaterialTheme.typography.bodyLarge,
+                            )
+                        }
+                        inner()
+                    },
+                )
+            }
+            Spacer(Modifier.height(AsterSpacing.lg))
         }
     }
 }
