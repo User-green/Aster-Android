@@ -6,9 +6,6 @@ on:
       - 'v*'
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
   release_fdroid:
     runs-on: ubuntu-latest
@@ -22,38 +19,19 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: install cargo-ndk
+        run: cargo install cargo-ndk --locked --version 4.1.2
+
+      - name: build native crypto from source
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: bash rust/aster-crypto-ffi/scripts/build_android.sh
+
       - name: build fdroid flavor
         run: ./gradlew assembleFdroidRelease
 
-      - name: sign fdroid apk
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: |
-          echo "$KEYSTORE_BASE64" | base64 -d > release.jks
-          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
-          "$apksigner" sign \
-            --ks release.jks \
-            --ks-key-alias aster-mail \
-            --ks-pass env:KEYSTORE_PASSWORD \
-            --key-pass env:KEY_PASSWORD \
-            --out Aster-Mail-fdroid.apk \
-            app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
-          "$apksigner" verify --print-certs Aster-Mail-fdroid.apk
-          rm -f release.jks
-
-      - name: cleanup keystore
-        if: always()
-        run: rm -f release.jks
-
-      - uses: actions/upload-artifact@v4
+      - name: upload unsigned fdroid apk
+        uses: actions/upload-artifact@v4
         with:
-          name: fdroid-signed
-          path: Aster-Mail-fdroid.apk
-
-      - name: attach to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: Aster-Mail-fdroid.apk
+          name: fdroid-unsigned
+          path: app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk

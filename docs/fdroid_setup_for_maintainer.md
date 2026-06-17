@@ -3,190 +3,123 @@
 Audience: a maintainer of `Aster-Privacy/Aster-Android` who holds the release
 signing key and can publish releases and edit the fdroiddata merge request.
 
-This documents what to set up so the app ships correctly on F-Droid. The
-findings below were validated on a fork sandbox; the actions must be performed
-on the upstream repo and its release process.
+## Why the first submission stalled
 
-## TL;DR
+F-Droid builds every app entirely from source on its own servers. The earlier
+attempt could not pass because the native crypto library
+(`libaster_crypto_ffi.so`) was a **prebuilt binary**: the Rust source was not in
+this repo and `core-crypto/src/main/jniLibs/` (where the `.so` lived) is
+gitignored. A clean checkout therefore produced an APK with **no** crypto
+library, which both (a) is non-functional and (b) does not match the
+hand-signed reference binary attached to the release (the reference had the
+`.so`, an F-Droid build did not). That mismatch is the "not reproducible"
+failure.
 
-- The published `Aster-Mail.apk` is the **`full` (GMS/Firebase) flavor**.
-  F-Droid cannot and will not build that flavor.
-- The app's **`fdroid` flavor** is the FOSS build for F-Droid. It was verified
-  to be **reproducible** (see Evidence).
-- Decide between two tracks:
-  - **Track A (recommended): reproducible + developer-signed.** You publish a
-    signed `fdroid`-flavor APK as the reference binary; F-Droid verifies it
-    reproduces and ships your signed APK.
-  - **Track B (simpler): F-Droid builds and signs.** No reference binary; F-Droid
-    signs with its own key.
+(The previous version of this doc claimed the build was already reproducible.
+That comparison was made between two builds that both had the prebuilt `.so`
+dropped in by hand; it was not a true from-source build. It was wrong.)
 
-## Background: the two flavors
+## What changed
 
-`app/build.gradle.kts` defines two product flavors under dimension
-`distribution`:
+The crypto core is now built from source as part of the build:
 
-- `full` - includes Google Play Services / Firebase Cloud Messaging. This is the
-  APK published as `Aster-Mail.apk` on GitHub Releases.
-- `fdroid` - the FOSS build, no GMS/Firebase. This is what F-Droid must use.
+- `rust/aster-crypto-ffi/` - the Rust JNI crate, vendored into this repo
+  (AGPL-3.0; self-contained, no secrets). The underlying algorithms were
+  already public in `Aster-Mail/aster-crypto`.
+- `rust/aster-crypto-ffi/scripts/build_android.sh` - compiles the three ABIs
+  via `cargo-ndk` into `core-crypto/src/main/jniLibs/`.
+- `rust-toolchain.toml` + `Cargo.lock` pin the toolchain and dependencies.
+- `.github/workflows/build.yml` runs the cargo-ndk step before
+  `./gradlew assemble`, so CI APKs are complete and built from source.
 
-A byte comparison of the published `Aster-Mail.apk` (v0.6.69) against an
-`fdroid`-flavor build of the same version showed the published APK contains
-Firebase/Play-Services components, extra native libs, and extra drawables that
-the `fdroid` flavor does not. They are intentionally different products. This is
-why earlier reproducibility attempts against `Aster-Mail.apk` failed: it was the
-wrong flavor, not a build problem.
+The `.so` files remain gitignored - they are build output, never committed.
 
-## Evidence: the fdroid flavor is reproducible
+## The two flavors (unchanged)
 
-Two independent `fdroid`-flavor builds of versionCode 76 (F-Droid's build server
-and a clean GitHub Actions runner) were compared:
+`app/build.gradle.kts` defines `full` (GMS/Firebase; the `Aster-Mail.apk`
+published on GitHub) and `fdroid` (FOSS, no GMS). F-Droid must build `fdroid`.
 
-- 418 entries each; **417 byte-for-byte identical** - including `classes*.dex`,
-  `resources.arsc`, every `res/*`, the native `.so` libraries, and the ART
-  baseline profiles.
-- The **only** differing file was `META-INF/version-control-info.textproto`, an
-  AGP-injected record of the source commit. It differed solely because the two
-  builds were of different commits; building the same tagged commit makes it
-  match too.
-- Timestamps are already normalized to the `1981-01-01` zip epoch by AGP.
+## fdroiddata recipe
 
-Conclusion: the `fdroid` flavor reproduces. Track A is viable.
+The build needs Rust + cargo-ndk steps. `subdir` is `app`, so build-step paths
+are relative to `app/` (the crate is at `../rust/aster-crypto-ffi`). The
+`build_android.sh` script resolves the output dir from its own location, so it
+writes to the right `jniLibs` regardless of the working directory.
 
----
+```yaml
+Builds:
+  - versionName: 0.6.73
+    versionCode: 80
+    commit: ca43a6e8e0647b580cf52e8058393f4e36e8f34e
+    subdir: app
+    ndk: r27c
+    prebuild:
+      - rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+      - cargo install cargo-ndk --locked --version 4.1.2
+    build:
+      - ANDROID_NDK_HOME="$$NDK$$" bash ../rust/aster-crypto-ffi/scripts/build_android.sh
+    gradle:
+      - fdroid
+```
 
-## Track A (recommended): reproducible + developer-signed
+Two known recipe details to settle with F-Droid's buildserver on the first run:
+- **NDK version**: pin `ndk:` to the version whose output you want to reproduce.
+  `r27c` matches NDK 27.1.x used locally; adjust if F-Droid prefers another.
+- **Offline build**: F-Droid restricts network during the build. If `cargo`
+  cannot fetch crates, run `cargo vendor` in `rust/aster-crypto-ffi` and commit
+  the vendor dir + a `.cargo/config.toml`, or use F-Droid's rust srclib support.
 
-F-Droid builds the `fdroid` flavor from source, copies your signature from the
-reference binary onto its build, confirms the rest is byte-identical, and ships
-your signed APK. Users get an APK signed by your key, with the "reproducible"
+### Track B (recommended to ship first): F-Droid builds and signs
+
+Simplest reliable path. No reference binary, no signing key anywhere, no
+reproducibility comparison - F-Droid just needs the from-source build above to
+succeed. Use the `Builds:` block as-is, with **no** `Binaries` and **no**
+`AllowedAPKSigningKeys`:
+
+```yaml
+AutoUpdateMode: Version
+UpdateCheckMode: Tags
+```
+
+Trade-off: F-Droid signs with its own key, so users cannot cross-update between
+the F-Droid build and your GitHub/Play builds, and there is no "reproducible"
 badge.
 
-### A1. Per release: publish a signed fdroid-flavor reference binary
+### Track A (optional enhancement): reproducible + developer-signed
 
-The `fdroid` flavor is force-unsigned in gradle:
+Keeps your signature across channels and earns the reproducible badge, but
+requires the from-source build to be **byte-reproducible** on F-Droid's
+servers - confirm this with one build round-trip before relying on it.
 
-```kotlin
-if (System.getenv("ASTER_UNSIGNED") != "1" && !is_fdroid_build) { ...signing... }
-```
-
-`is_fdroid_build` is always true for an fdroid task, so gradle will not sign it.
-Sign it **after** building, with `apksigner`. On the release machine, for each
-tagged release:
-
-```bash
-./gradlew assembleFdroidRelease
-apksigner sign \
-  --ks <release-keystore>.jks \
-  --ks-key-alias aster-mail \
-  --out Aster-Mail-fdroid.apk \
-  app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
-apksigner verify --print-certs Aster-Mail-fdroid.apk
-```
-
-Notes:
-- Use a **distinct filename** (`Aster-Mail-fdroid.apk`) so it coexists with the
-  full-flavor `Aster-Mail.apk` on the same GitHub Release.
-- Signing only adds the signing block; it does not disturb the reproducible
-  content. F-Droid strips/copies the signature before comparing.
-- The key may be your existing release key or a dedicated one. Whatever signs
-  this APK is what `AllowedAPKSigningKeys` must list.
-
-Attach `Aster-Mail-fdroid.apk` to the GitHub Release for that version tag.
-
-### A2. Get the signing certificate SHA-256
-
-`AllowedAPKSigningKeys` is the SHA-256 of the signing certificate (lowercase
-hex, no colons):
-
-```bash
-apksigner verify --print-certs Aster-Mail-fdroid.apk
-# read the "certificate SHA-256 digest" line
-```
-
-(For reference, the certificate on the current published builds is
-`88b0a8a6fb94ee73a454a0f92732bd408e92e51ec1e9556744e5f00556100977`. Use the
-value for whichever key actually signs the fdroid reference binary.)
-
-### A3. fdroiddata recipe (the merge request)
-
-Add `Binaries` and `AllowedAPKSigningKeys` to
-`metadata/org.astermail.android.yml`. Field order matters - `fdroid rewritemeta`
-enforces it: `Binaries` after `Repo`, `AllowedAPKSigningKeys` after `Builds`.
+Add to the recipe:
 
 ```yaml
-Binaries: https://github.com/Aster-Privacy/Aster-Android/releases/download/v%v/Aster-Mail-fdroid.apk
-
-Builds:
-  - versionName: 0.6.69
-    versionCode: 76
-    commit: <exact tag commit>
-    subdir: app
-    gradle:
-      - fdroid
-
-AllowedAPKSigningKeys: <cert sha256 from A2>
-
-AutoUpdateMode: Version
-UpdateCheckMode: Tags
+Binaries: https://github.com/Aster-Privacy/Aster-Android/releases/download/v%v/Aster-Mail-fdroid-%v.apk
+AllowedAPKSigningKeys: 88b0a8a6fb94ee73a454a0f92732bd408e92e51ec1e9556744e5f00556100977
 ```
 
-Pitfalls confirmed during testing:
-- `%v` (versionName) is **required** in the `Binaries` URL but **forbidden** in
-  `AutoUpdateMode` - use bare `Version` there.
-- The `Binaries` URL must serve a **per-version, immutable** artifact (the `v%v`
-  tag does this). Do not point it at a rolling "latest" asset.
-- Run `fdroid rewritemeta` before committing to satisfy field ordering and
-  trailing-newline checks.
+Per release, publish a reference binary that is **built in CI** (clean room,
+matches F-Droid's environment) and **signed locally** (the key never goes into
+public CI):
 
-### A4. Ongoing release discipline
+1. Run the `release_fdroid` workflow on the tag; download the `fdroid-unsigned`
+   artifact (`app-fdroid-release-unsigned.apk`).
+2. On the release machine, sign it locally:
+   ```bash
+   zipalign -p -f 4 app-fdroid-release-unsigned.apk aligned.apk
+   apksigner sign --ks keystore/aster-mail-upload-v3.jks \
+     --ks-key-alias aster-mail --out Aster-Mail-fdroid-<version>.apk aligned.apk
+   apksigner verify --print-certs Aster-Mail-fdroid-<version>.apk
+   ```
+   The cert SHA-256 must be `88b0a8a6...0977` (matches `AllowedAPKSigningKeys`).
+3. Attach `Aster-Mail-fdroid-<version>.apk` to the GitHub Release for that tag.
 
-Every release must publish the signed `fdroid`-flavor APK at the `v%v` URL,
-built from the exact tagged commit with the `fdroid` flavor. If a release skips
-it, F-Droid's reproducibility check for that version fails.
+Do **not** add `KEYSTORE_*` secrets to this public repo: that key also signs
+your Play/GitHub builds, and anyone with repo write/Actions access could
+exfiltrate it. Local signing keeps it off CI.
 
----
+## Per-release discipline
 
-## Track B (simpler): F-Droid builds and signs
-
-No reference binary, no key handling. F-Droid builds the `fdroid` flavor and
-signs it with F-Droid's key.
-
-Recipe has **no** `Binaries` and **no** `AllowedAPKSigningKeys`:
-
-```yaml
-Builds:
-  - versionName: 0.6.69
-    versionCode: 76
-    commit: <exact tag commit>
-    subdir: app
-    gradle:
-      - fdroid
-
-AutoUpdateMode: Version
-UpdateCheckMode: Tags
-```
-
-Trade-offs vs Track A:
-- Simpler: nothing to publish per release, no key in the release flow.
-- F-Droid's signature differs from your GitHub/Play signature, so users cannot
-  cross-update between the F-Droid build and your own distribution.
-- No "reproducible" badge.
-
----
-
-## Recommendation
-
-For a privacy-focused project, **Track A** is worth the extra release step: it
-proves the published binary matches the source and lets users keep your
-signature across channels. Track B is the safe fallback if maintaining the
-per-release signed reference binary is not practical.
-
-## Quick checklist (Track A)
-
-- [ ] Release machine builds `assembleFdroidRelease` and signs it with
-      `apksigner` as `Aster-Mail-fdroid.apk`.
-- [ ] That APK is attached to the GitHub Release under the `v<version>` tag.
-- [ ] `AllowedAPKSigningKeys` set to the signing cert SHA-256.
-- [ ] `Binaries` points at the `v%v` URL of the signed fdroid APK.
-- [ ] `AutoUpdateMode: Version` (bare, no `%v`).
-- [ ] `fdroid rewritemeta` run; schema/lint/build pipeline green.
+Every release builds the native crypto from source automatically (CI). For
+Track A, also publish the locally-signed `Aster-Mail-fdroid-%v.apk` at the
+`v%v` URL, built from the exact tagged commit.
