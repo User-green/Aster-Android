@@ -350,7 +350,16 @@ fun ComposeScreen(
     var bcc_chips by remember { mutableStateOf(listOf<String>()) }
     var bcc_input by remember { mutableStateOf("") }
     var subject by remember { mutableStateOf(prefill.subject) }
-    var body by remember { mutableStateOf(prefill.body) }
+    val initial_watermark = remember {
+        if (mode != "draft" && prefill.body.isBlank() &&
+            settings_state.preferences?.show_aster_branding != false
+        ) {
+            "\n\n${context.getString(R.string.compose_footer_secured_by_plain)}"
+        } else {
+            ""
+        }
+    }
+    var body by remember { mutableStateOf(if (prefill.body.isNotBlank()) prefill.body else initial_watermark) }
     var initial_to_chips by remember { mutableStateOf<List<String>>(emptyList()) }
     var initial_subject by remember { mutableStateOf("") }
     var initial_body by remember { mutableStateOf("") }
@@ -371,9 +380,12 @@ fun ComposeScreen(
         val resolved = settings_vm.signature_for(current_alias_id)?.content.orEmpty()
         val show_branding = settings_state.preferences?.show_aster_branding != false
         val watermark = if (show_branding) "\n\n${context.getString(R.string.compose_footer_secured_by_plain)}" else ""
-        body = if (resolved.isNotBlank()) "\n\n${resolved}${watermark}" else watermark
+        val new_body = if (resolved.isNotBlank()) "\n\n${resolved}${watermark}" else watermark
+        if (body == initial_watermark || body.isBlank()) {
+            body = new_body
+            initial_body = new_body
+        }
         applied_signature = resolved
-        initial_body = body
         signature_applied = true
     }
     LaunchedEffect(current_alias_id, signature_applied) {
