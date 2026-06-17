@@ -1043,12 +1043,12 @@ private fun inbox_top_bar(
                 DropdownMenu(
                     expanded = folder_menu_open,
                     onDismissRequest = { folder_menu_open = false },
+                    shape = SquircleShape(18.dp),
+                    containerColor = colors.dropdown_bg,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, colors.border_secondary),
                     shadowElevation = 8.dp,
-                    modifier = Modifier
-                        .clip(SquircleShape(18.dp))
-                        .background(colors.dropdown_bg)
-                        .border(1.dp, colors.border_secondary, SquircleShape(18.dp))
-                        .padding(vertical = 6.dp),
+                    tonalElevation = 0.dp,
+                    modifier = Modifier.padding(vertical = 6.dp),
                 ) {
                     quick_switch_folders.forEach { (id, label_res) ->
                         val label = stringResource(label_res)

@@ -2560,6 +2560,14 @@ private object html_cache {
     }
 }
 
+private val email_image_http_client: okhttp3.OkHttpClient by lazy {
+    okhttp3.OkHttpClient.Builder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+        .followRedirects(false)
+        .build()
+}
+
 @Composable
 private fun email_html_view(
     html: String,
@@ -3024,36 +3032,44 @@ $dark_css
                 val current_token = settings_vm.get_access_token()
                 if (current_token.isNullOrBlank()) return null
                 return try {
-                    fun open(bearer: String): java.net.HttpURLConnection {
-                        val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                        conn.instanceFollowRedirects = false
-                        conn.setRequestProperty("Authorization", "Bearer $bearer")
-                        conn.connectTimeout = 10_000
-                        conn.readTimeout = 15_000
-                        conn.connect()
-                        return conn
+                    fun fetch(bearer: String): okhttp3.Response {
+                        val req = okhttp3.Request.Builder()
+                            .url(url)
+                            .header("Authorization", "Bearer $bearer")
+                            .build()
+                        return email_image_http_client.newCall(req).execute()
                     }
-                    var conn = open(current_token)
-                    if (conn.responseCode == 401) {
-                        conn.disconnect()
+                    var resp = fetch(current_token)
+                    if (resp.code == 401) {
+                        resp.close()
                         val refreshed = settings_vm.refresh_access_token_blocking()
                         if (refreshed.isNullOrBlank()) return null
-                        conn = open(refreshed)
+                        resp = fetch(refreshed)
                     }
-                    if (conn.responseCode !in 200..299) { conn.disconnect(); return null }
-                    val content_type = conn.contentType?.substringBefore(';') ?: "image/jpeg"
-                    val wrapped = object : java.io.FilterInputStream(conn.inputStream) {
+                    if (!resp.isSuccessful) { resp.close(); return null }
+                    val body = resp.body
+                    if (body == null) { resp.close(); return null }
+                    val content_type = resp.header("Content-Type")?.substringBefore(';')?.trim()
+                        ?.takeIf { it.isNotBlank() } ?: "image/jpeg"
+                    val stream = object : java.io.FilterInputStream(body.byteStream()) {
                         override fun close() {
-                            try { super.close() } finally { conn.disconnect() }
+                            try { super.close() } finally { resp.close() }
                         }
                     }
-                    android.webkit.WebResourceResponse(content_type, null, wrapped)
+                    android.webkit.WebResourceResponse(content_type, null, stream)
                 } catch (_: Throwable) { null }
             }
         }
     }
 
     Box(modifier = modifier.background(colors.bg_primary), contentAlignment = Alignment.Center) {
+        if (!has_measured) {
+            email_body_skeleton(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.TopStart),
+            )
+        }
         androidx.compose.ui.viewinterop.AndroidView(
             factory = { ctx ->
                 android.webkit.WebView(ctx).apply {

@@ -28,6 +28,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -410,6 +411,7 @@ class MailPollingWorker(
             )
             val summary = NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(app_large_icon(context))
                 .setColor(0xFF3B82F6.toInt())
                 .setContentTitle(context.getString(R.string.notif_group_summary_new_mail))
                 .setGroup(GROUP_KEY_NEW_MAIL)
@@ -442,11 +444,17 @@ class MailPollingWorker(
             )
             return NotificationCompat.Builder(context, CHANNEL_ID)
                 .setSmallIcon(R.drawable.ic_notification)
+                .setLargeIcon(app_large_icon(context))
                 .setColor(0xFF3B82F6.toInt())
                 .setPriority(NotificationCompat.PRIORITY_DEFAULT)
                 .setCategory(NotificationCompat.CATEGORY_EMAIL)
                 .setContentIntent(pending)
                 .setAutoCancel(true)
         }
+
+        private fun app_large_icon(context: Context) = runCatching {
+            BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher_round)
+                ?: BitmapFactory.decodeResource(context.resources, R.mipmap.ic_launcher)
+        }.getOrNull()
     }
 }
