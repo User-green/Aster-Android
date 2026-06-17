@@ -19,6 +19,11 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
 
+      - name: install NDK r27c
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;27.2.12479018" >/dev/null
+          echo "ANDROID_NDK_ROOT=$ANDROID_HOME/ndk/27.2.12479018" >> "$GITHUB_ENV"
+
       - name: install cargo-ndk
         run: cargo install cargo-ndk --locked --version 4.1.2
 
