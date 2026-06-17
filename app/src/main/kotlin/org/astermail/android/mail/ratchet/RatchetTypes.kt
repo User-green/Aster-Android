@@ -67,6 +67,8 @@ data class BootstrapData(
     val ephemeral_key: String,
     val pq_ciphertext: String? = null,
     val pq_key_id: Int? = null,
+    val sender_identity_key: String? = null,
+    val recipient_identity_key: String? = null,
 )
 
 @Serializable

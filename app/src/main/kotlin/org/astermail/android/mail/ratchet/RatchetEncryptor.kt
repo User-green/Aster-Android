@@ -26,6 +26,7 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import org.astermail.android.api.ratchet.PrekeyBundleResponse
 import org.astermail.android.api.ratchet.RatchetApi
 import org.astermail.android.crypto.ratchet.RatchetCrypto
 import org.astermail.android.storage.SessionKeyStore
@@ -55,7 +56,7 @@ class RatchetEncryptor @Inject constructor(
 
         val per_recipient = mutableMapOf<String, RatchetRecipientData>()
         for (recipient_email in recipients) {
-            val data = encrypt_for_recipient(sender_email, sender_identity_jwk, recipient_email, body) ?: return null
+            val data = encrypt_for_recipient(sender_email, sender_identity_public, sender_identity_jwk, recipient_email, body) ?: return null
             per_recipient[recipient_email.lowercase()] = data
         }
 
@@ -69,15 +70,42 @@ class RatchetEncryptor @Inject constructor(
 
     private suspend fun encrypt_for_recipient(
         sender_email: String,
+        sender_identity_public: String,
         sender_identity_jwk: String,
         recipient_email: String,
         body: String,
     ): RatchetRecipientData? {
         val conversation_id = X3dh.derive_conversation_id(sender_email, recipient_email)
+        val username = recipient_email.substringBefore('@')
 
         var state = state_store.load(conversation_id)
         if (state != null && state.bootstrap == null) {
             state = null
+        }
+
+        var bundle: PrekeyBundleResponse? = null
+
+        // Reuse an existing session only if neither party rotated identities
+        // since it was bootstrapped. Sessions created before identity tracking
+        // (null sender/recipient identity) are refreshed once. If the current
+        // bundle cannot be fetched, keep the session rather than failing the send.
+        if (state != null) {
+            val boot = state.bootstrap!!
+            val sender_changed = boot.sender_identity_key != sender_identity_public
+            var recipient_changed = false
+            if (!sender_changed) {
+                bundle = try {
+                    ratchet_api.fetch_prekey_bundle(username, recipient_email)
+                } catch (t: Throwable) {
+                    null
+                }
+                if (bundle != null && boot.recipient_identity_key != bundle.kem_identity_key) {
+                    recipient_changed = true
+                }
+            }
+            if (sender_changed || recipient_changed) {
+                state = null
+            }
         }
 
         var ephemeral_b64: String? = null
@@ -85,30 +113,29 @@ class RatchetEncryptor @Inject constructor(
         var pq_key_id: Int? = null
 
         if (state == null) {
-            val username = recipient_email.substringBefore('@')
-            val bundle = try {
+            val resolved_bundle = (bundle ?: try {
                 ratchet_api.fetch_prekey_bundle(username, recipient_email)
             } catch (t: Throwable) {
                 if (BuildConfig.DEBUG) android.util.Log.w("AsterRatchet", "prekey bundle fetch threw", t)
                 null
-            } ?: run {
+            }) ?: run {
                 if (BuildConfig.DEBUG) android.util.Log.w("AsterRatchet", "no prekey bundle for recipient")
                 return null
             }
 
-            if (BuildConfig.DEBUG && bundle.signed_prekey_signature.isNotBlank()) {
-                val provided = runCatching { RatchetCrypto.b64_decode(bundle.signed_prekey_signature) }.getOrNull()
+            if (BuildConfig.DEBUG && resolved_bundle.signed_prekey_signature.isNotBlank()) {
+                val provided = runCatching { RatchetCrypto.b64_decode(resolved_bundle.signed_prekey_signature) }.getOrNull()
                 if (provided != null && provided.size == 32) {
-                    val sig_input = (bundle.kem_identity_key + bundle.signed_prekey).toByteArray(Charsets.UTF_8)
+                    val sig_input = (resolved_bundle.kem_identity_key + resolved_bundle.signed_prekey).toByteArray(Charsets.UTF_8)
                     if (!RatchetCrypto.sha256(sig_input).contentEquals(provided)) {
                         android.util.Log.w("AsterRatchet", "prekey bundle hash inconsistent")
                     }
                 }
             }
 
-            val recipient_identity_raw = RatchetCrypto.b64_decode(bundle.kem_identity_key)
-            val recipient_spk_raw = RatchetCrypto.b64_decode(bundle.signed_prekey)
-            val pq_prekey_pair = bundle.pq_prekey?.let { it.key_id to RatchetCrypto.b64_decode(it.public_key) }
+            val recipient_identity_raw = RatchetCrypto.b64_decode(resolved_bundle.kem_identity_key)
+            val recipient_spk_raw = RatchetCrypto.b64_decode(resolved_bundle.signed_prekey)
+            val pq_prekey_pair = resolved_bundle.pq_prekey?.let { it.key_id to RatchetCrypto.b64_decode(it.public_key) }
 
             val x3dh_result = X3dh.perform_sender(
                 sender_identity_jwk = sender_identity_jwk,
@@ -121,7 +148,7 @@ class RatchetEncryptor @Inject constructor(
                 state = DoubleRatchet.init_sender(
                     conversation_id = conversation_id,
                     shared_secret = x3dh_result.shared_secret,
-                    remote_signed_prekey_raw_b64 = bundle.signed_prekey,
+                    remote_signed_prekey_raw_b64 = resolved_bundle.signed_prekey,
                 )
                 ephemeral_b64 = RatchetCrypto.b64_encode(x3dh_result.ephemeral_public_raw)
                 if (x3dh_result.pq_ciphertext != null && x3dh_result.pq_key_id != null) {
@@ -132,6 +159,8 @@ class RatchetEncryptor @Inject constructor(
                     ephemeral_key = ephemeral_b64!!,
                     pq_ciphertext = pq_ciphertext_b64,
                     pq_key_id = pq_key_id,
+                    sender_identity_key = sender_identity_public,
+                    recipient_identity_key = resolved_bundle.kem_identity_key,
                 )
             } finally {
                 x3dh_result.shared_secret.fill(0)
