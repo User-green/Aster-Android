@@ -1691,6 +1691,7 @@ private fun compact_banner(
     actions: @Composable () -> Unit,
 ) {
     val colors = AsterMaterial.colors
+    var expanded by remember { mutableStateOf(false) }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1712,9 +1713,11 @@ private fun compact_banner(
             color = colors.text_secondary,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
-            maxLines = 1,
+            maxLines = if (expanded) 6 else 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .clickable { expanded = !expanded },
         )
         Spacer(Modifier.width(AsterSpacing.sm))
         actions()
@@ -3177,7 +3180,12 @@ $dark_css
                     animationSpec = androidx.compose.animation.core.tween(durationMillis = 100),
                     label = "web_height",
                 )
-                Modifier.height(animated_h)
+                val reveal by animateFloatAsState(
+                    targetValue = if (has_measured) 1f else 0f,
+                    animationSpec = androidx.compose.animation.core.tween(durationMillis = 140),
+                    label = "web_reveal",
+                )
+                Modifier.height(animated_h).alpha(reveal)
             },
             onRelease = { web_view ->
                 runCatching {
