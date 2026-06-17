@@ -2631,7 +2631,7 @@ private fun email_html_view(
 
     val measure_js = """(function(){
         var el=document.getElementById('m');
-        if(el) console.log('ASTER_HEIGHT:'+(el.offsetHeight+16));
+        if(el) console.log('ASTER_HEIGHT:'+(el.offsetHeight));
     })()"""
 
     fun build_html(body: String): String {
@@ -2753,8 +2753,8 @@ $dark_css
       }
     }
   }
-  function report_h(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT:'+(m.offsetHeight+16))}
-  function report_h_exact(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT_EXACT:'+(m.offsetHeight+16))}
+  function report_h(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT:'+(m.offsetHeight))}
+  function report_h_exact(){var m=document.getElementById('m');if(m)console.log('ASTER_HEIGHT_EXACT:'+(m.offsetHeight))}
   function linkify_text_nodes(root){
     var url_re=/((?:https?:\/\/|www\.)[^\s<>"']+[^\s<>"'.,;:!?)\]}])|([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
     var skip_tags={A:1,SCRIPT:1,STYLE:1,TEXTAREA:1,CODE:1,PRE:1,BUTTON:1};
@@ -2785,7 +2785,7 @@ $dark_css
     if(!m)return;
     if(document.documentElement.getAttribute('data-nl')){
       aster_fit_scale=1.0;
-      console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight)+16));
+      console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight)));
       return;
     }
     var vw=window.innerWidth;
@@ -2812,7 +2812,7 @@ $dark_css
       }
     }
     aster_fit_scale=scale2;
-    console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight*scale2)+16));
+    console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight*scale2)));
   }
   window.__aster_fit=aster_fit;
   try{
@@ -3206,7 +3206,7 @@ $dark_css
                     web_view.postDelayed({
                         if (!has_measured) {
                             web_view.evaluateJavascript(
-                                "(function(){var m=document.getElementById('m');if(!m)return 0;var br=m.getBoundingClientRect();return Math.round(br.height)+16;})()",
+                                "(function(){var m=document.getElementById('m');if(!m)return 0;var br=m.getBoundingClientRect();return Math.round(br.height);})()",
                             ) { result ->
                                 val parsed = result?.trim()?.removeSurrounding("\"")?.toIntOrNull() ?: 0
                                 if (parsed > 0) {
