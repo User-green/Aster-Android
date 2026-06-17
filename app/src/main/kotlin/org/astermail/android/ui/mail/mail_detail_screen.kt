@@ -2643,7 +2643,13 @@ private fun email_html_view(
             (body.split(Regex("<table\\b", RegexOption.IGNORE_CASE)).size - 1) > 2
         )
         val declares_light = body.contains(Regex("color-scheme\\s*:\\s*light\\s+only", RegexOption.IGNORE_CASE))
-        val simple_dark = is_dark && is_html_body && !has_newsletter_layout && !declares_light
+        val declares_light_bg = is_html_body && body.contains(
+            Regex(
+                "(?:background(?:-color)?\\s*:\\s*(?:#fff(?:fff)?\\b|white\\b|rgb\\(\\s*2(?:4[0-9]|5[0-5])\\s*,\\s*2(?:4[0-9]|5[0-5])\\s*,\\s*2(?:4[0-9]|5[0-5])))|bgcolor\\s*=\\s*[\"']?\\s*(?:#fff(?:fff)?|white))",
+                RegexOption.IGNORE_CASE,
+            ),
+        )
+        val simple_dark = is_dark && is_html_body && !has_newsletter_layout && !declares_light && !declares_light_bg
         val force_light = is_html_body && !simple_dark
 
         val sys_font = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
