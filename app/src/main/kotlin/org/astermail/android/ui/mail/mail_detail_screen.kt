@@ -1254,6 +1254,10 @@ private fun expanded_message(
             .fillMaxWidth()
             .background(colors.bg_primary),
     ) {
+        if (show_top_divider) {
+            Spacer(Modifier.height(AsterSpacing.sm))
+            AsterDivider()
+        }
         Spacer(Modifier.height(AsterSpacing.sm))
 
         Row(
