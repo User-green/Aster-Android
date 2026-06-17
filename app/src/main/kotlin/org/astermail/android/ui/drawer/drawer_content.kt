@@ -279,11 +279,10 @@ fun DrawerContent(
     val current_workspace = user_email
     val clipboard = LocalClipboardManager.current
 
-    var mail_expanded by rememberSaveable { mutableStateOf(true) }
-    var more_expanded by rememberSaveable { mutableStateOf(true) }
-    var folders_expanded by rememberSaveable { mutableStateOf(true) }
-    var labels_expanded by rememberSaveable { mutableStateOf(true) }
-    var aliases_expanded by rememberSaveable { mutableStateOf(true) }
+    var more_expanded by rememberSaveable { mutableStateOf(false) }
+    var folders_expanded by rememberSaveable { mutableStateOf(false) }
+    var labels_expanded by rememberSaveable { mutableStateOf(false) }
+    var aliases_expanded by rememberSaveable { mutableStateOf(false) }
     var aliases_show_all by remember { mutableStateOf(false) }
     val aliases_collapsed_count = 5
     var prefs_synced by rememberSaveable { mutableStateOf(false) }
@@ -318,24 +317,23 @@ fun DrawerContent(
     val label_contacts = stringResource(R.string.folder_contacts)
     val label_subscriptions = stringResource(R.string.folder_subscriptions)
 
-    val mail_items = remember(inbox_unread, drafts_count, label_inbox, label_sent, label_scheduled, label_snoozed, label_drafts) {
+    val core_items = remember(inbox_unread, drafts_count, spam_count, trash_count, label_inbox, label_sent, label_drafts, label_starred, label_archive, label_spam, label_trash) {
         listOf(
             drawer_folder_item("inbox", label_inbox, Icons.Outlined.Inbox, inbox_unread),
             drawer_folder_item("sent", label_sent, Icons.AutoMirrored.Outlined.Send),
-            drawer_folder_item("scheduled", label_scheduled, Icons.Outlined.Schedule),
-            drawer_folder_item("snoozed", label_snoozed, Icons.Outlined.NotificationsPaused),
             drawer_folder_item("drafts", label_drafts, Icons.Outlined.Description, drafts_count),
-        )
-    }
-
-    val more_items = remember(spam_count, trash_count, label_starred, label_all_mail, label_archive, label_spam, label_trash, label_contacts, label_subscriptions) {
-        listOf(
             drawer_folder_item("starred", label_starred, Icons.Outlined.Star),
-            drawer_folder_item("all", label_all_mail, Icons.Outlined.Email),
             drawer_folder_item("archive", label_archive, Icons.Outlined.Archive),
             drawer_folder_item("spam", label_spam, Icons.Outlined.WarningAmber, spam_count),
             drawer_folder_item("trash", label_trash, Icons.Outlined.Delete, trash_count),
-            drawer_folder_item("contacts", label_contacts, Icons.Outlined.People),
+        )
+    }
+
+    val more_secondary = remember(label_scheduled, label_snoozed, label_all_mail, label_subscriptions) {
+        listOf(
+            drawer_folder_item("scheduled", label_scheduled, Icons.Outlined.Schedule),
+            drawer_folder_item("snoozed", label_snoozed, Icons.Outlined.NotificationsPaused),
+            drawer_folder_item("all", label_all_mail, Icons.Outlined.Email),
             drawer_folder_item("subscriptions", label_subscriptions, Icons.Outlined.Newspaper),
         )
     }
@@ -363,36 +361,30 @@ fun DrawerContent(
 
             Spacer(Modifier.height(AsterSpacing.sm))
 
-            collapsible_section_header(
-                text = stringResource(R.string.drawer_mail),
-                expanded = mail_expanded,
-                on_toggle = {
-                    mail_expanded = !mail_expanded
-                },
-            )
-            androidx.compose.animation.AnimatedVisibility(
-                visible = mail_expanded,
-                enter = section_expand_enter(),
-                exit = section_expand_exit(),
-            ) {
-                androidx.compose.foundation.layout.Column {
-                    mail_items.forEach { item ->
-                        drawer_row(
-                            icon = item.icon,
-                            label = item.label,
-                            count = item.count,
-                            is_unread_count = item.id == "inbox",
-                            selected = item.id == selected_id,
-                            on_click = {
-                                on_select(item.id)
-                                on_close()
-                            },
-                        )
-                    }
-                }
+            core_items.forEach { item ->
+                drawer_row(
+                    icon = item.icon,
+                    label = item.label,
+                    count = item.count,
+                    is_unread_count = item.id == "inbox",
+                    selected = item.id == selected_id,
+                    on_click = {
+                        on_select(item.id)
+                        on_close()
+                    },
+                )
             }
 
-            Spacer(Modifier.height(AsterSpacing.md))
+            Spacer(Modifier.height(AsterSpacing.sm))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = AsterSpacing.lg)
+                    .height(1.dp)
+                    .background(colors.border_secondary),
+            )
+            Spacer(Modifier.height(AsterSpacing.xs))
+
             collapsible_section_header(
                 text = stringResource(R.string.drawer_more),
                 expanded = more_expanded,
@@ -407,7 +399,7 @@ fun DrawerContent(
                 exit = section_expand_exit(),
             ) {
                 androidx.compose.foundation.layout.Column {
-                    more_items.forEach { item ->
+                    more_secondary.forEach { item ->
                         drawer_row(
                             icon = item.icon,
                             label = item.label,
@@ -420,6 +412,28 @@ fun DrawerContent(
                             },
                         )
                     }
+                    drawer_row(
+                        icon = Icons.Outlined.WorkspacePremium,
+                        label = stringResource(R.string.subscription),
+                        count = 0,
+                        is_unread_count = false,
+                        selected = false,
+                        on_click = {
+                            on_select("plan")
+                            on_close()
+                        },
+                    )
+                    drawer_row(
+                        icon = Icons.Outlined.MarkEmailRead,
+                        label = stringResource(R.string.refer_a_friend),
+                        count = 0,
+                        is_unread_count = false,
+                        selected = false,
+                        on_click = {
+                            on_select("referral")
+                            on_close()
+                        },
+                    )
                 }
             }
 
@@ -577,17 +591,19 @@ fun DrawerContent(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = AsterSpacing.lg)
                     .height(1.dp)
                     .background(colors.border_secondary),
             )
+            Spacer(Modifier.height(AsterSpacing.xs))
             drawer_row(
-                icon = Icons.Outlined.WorkspacePremium,
-                label = stringResource(R.string.subscription),
+                icon = Icons.Outlined.People,
+                label = stringResource(R.string.folder_contacts),
                 count = 0,
                 is_unread_count = false,
-                selected = false,
+                selected = selected_id == "contacts",
                 on_click = {
-                    on_select("plan")
+                    on_select("contacts")
                     on_close()
                 },
             )
@@ -602,17 +618,6 @@ fun DrawerContent(
                     on_close()
                 },
                 test_tag = "settings",
-            )
-            drawer_row(
-                icon = Icons.Outlined.MarkEmailRead,
-                label = stringResource(R.string.refer_a_friend),
-                count = 0,
-                is_unread_count = false,
-                selected = false,
-                on_click = {
-                    on_select("referral")
-                    on_close()
-                },
             )
             if (storage_label.isNotBlank()) {
                 drawer_footer(

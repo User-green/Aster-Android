@@ -34,12 +34,12 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 
-const val nav_anim_forward_ms = 300
-const val nav_anim_backward_ms = 280
+const val nav_anim_forward_ms = 230
+const val nav_anim_backward_ms = 210
 const val nav_anim_duration_ms = nav_anim_forward_ms
-const val nav_slide_fraction = 0.22f
-private const val nav_fade_in_ms = 220
-private const val nav_fade_out_ms = 200
+const val nav_slide_fraction = 0.18f
+private const val nav_fade_in_ms = 170
+private const val nav_fade_out_ms = 150
 
 private val nav_easing_enter = CubicBezierEasing(0.05f, 0.7f, 0.1f, 1f)
 private val nav_easing_exit = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
