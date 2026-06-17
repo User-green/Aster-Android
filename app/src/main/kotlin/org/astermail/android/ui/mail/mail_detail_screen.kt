@@ -2560,13 +2560,43 @@ private object html_cache {
     }
 }
 
-private val email_image_http_client: okhttp3.OkHttpClient by lazy {
-    okhttp3.OkHttpClient.Builder()
-        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
-        .followRedirects(false)
-        .build()
+@Volatile
+private var email_image_client_instance: okhttp3.OkHttpClient? = null
+
+private fun email_image_client(context: android.content.Context): okhttp3.OkHttpClient {
+    email_image_client_instance?.let { return it }
+    return synchronized(mail_detail_image_lock) {
+        email_image_client_instance ?: okhttp3.OkHttpClient.Builder()
+            .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .followRedirects(false)
+            .cache(
+                okhttp3.Cache(
+                    java.io.File(context.applicationContext.cacheDir, "email_img_cache"),
+                    64L * 1024 * 1024,
+                ),
+            )
+            .addNetworkInterceptor { chain ->
+                val resp = chain.proceed(chain.request())
+                if (resp.isSuccessful) {
+                    resp.newBuilder()
+                        .header("Cache-Control", "max-age=86400")
+                        .removeHeader("Pragma")
+                        .build()
+                } else {
+                    resp
+                }
+            }
+            .build()
+            .apply {
+                dispatcher.maxRequests = 64
+                dispatcher.maxRequestsPerHost = 16
+            }
+            .also { email_image_client_instance = it }
+    }
 }
+
+private val mail_detail_image_lock = Any()
 
 @Composable
 private fun email_html_view(
@@ -3031,13 +3061,15 @@ $dark_css
                 if (!url.startsWith(proxy_base)) return null
                 val current_token = settings_vm.get_access_token()
                 if (current_token.isNullOrBlank()) return null
+                val ctx = view?.context ?: return null
+                val client = email_image_client(ctx)
                 return try {
                     fun fetch(bearer: String): okhttp3.Response {
                         val req = okhttp3.Request.Builder()
                             .url(url)
                             .header("Authorization", "Bearer $bearer")
                             .build()
-                        return email_image_http_client.newCall(req).execute()
+                        return client.newCall(req).execute()
                     }
                     var resp = fetch(current_token)
                     if (resp.code == 401) {
