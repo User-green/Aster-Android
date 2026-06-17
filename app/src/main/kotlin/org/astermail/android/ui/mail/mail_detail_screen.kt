@@ -1657,52 +1657,83 @@ private fun reply_action_button(
 }
 
 @Composable
-private fun unsubscribe_banner(
-    on_unsubscribe: () -> Unit,
+private fun compact_banner_action(
+    label: String,
+    primary: Boolean,
+    onClick: () -> Unit,
 ) {
     val colors = AsterMaterial.colors
-    Column(
+    Box(
+        modifier = Modifier
+            .clip(SquircleShape(999.dp))
+            .then(
+                if (primary) Modifier.background(colors.accent_blue)
+                else Modifier.border(1.dp, colors.border_secondary, SquircleShape(999.dp)),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            color = if (primary) Color.White else colors.accent_blue,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun compact_banner(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    actions: @Composable () -> Unit,
+) {
+    val colors = AsterMaterial.colors
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.xs)
-            .clip(SquircleShape(18.dp))
+            .clip(SquircleShape(14.dp))
             .background(colors.bg_secondary)
-            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.sm),
+            .padding(horizontal = AsterSpacing.md, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.Unsubscribe,
-                contentDescription = null,
-                tint = colors.text_secondary,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(AsterSpacing.sm))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.detail_unsubscribe_title),
-                    color = colors.text_primary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = stringResource(R.string.detail_unsubscribe_subtitle),
-                    color = colors.text_muted,
-                    fontSize = 12.sp,
-                )
-            }
-        }
-        Spacer(Modifier.height(AsterSpacing.sm))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
-        ) {
-            org.astermail.android.design.components.AsterDialogPrimaryButton(
-                label = stringResource(R.string.unsubscribe),
-                onClick = on_unsubscribe,
-                modifier = Modifier.weight(1f),
-            )
-        }
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colors.text_secondary,
+            modifier = Modifier.size(16.dp),
+        )
+        Spacer(Modifier.width(AsterSpacing.sm))
+        Text(
+            text = label,
+            color = colors.text_secondary,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(AsterSpacing.sm))
+        actions()
+    }
+}
+
+@Composable
+private fun unsubscribe_banner(
+    on_unsubscribe: () -> Unit,
+) {
+    compact_banner(
+        icon = Icons.Outlined.Unsubscribe,
+        label = stringResource(R.string.detail_unsubscribe_title),
+    ) {
+        compact_banner_action(
+            label = stringResource(R.string.unsubscribe),
+            primary = true,
+            onClick = on_unsubscribe,
+        )
     }
 }
 
@@ -1712,7 +1743,6 @@ private fun external_content_banner(
     on_allow_once: () -> Unit,
     on_always_allow: () -> Unit,
 ) {
-    val colors = AsterMaterial.colors
     val summary_parts = mutableListOf<String>()
     if (counts.image_count > 0) {
         val n = counts.image_count
@@ -1730,55 +1760,20 @@ private fun external_content_banner(
         val n = counts.css_count
         summary_parts.add(if (n == 1) stringResource(R.string.one_stylesheet) else stringResource(R.string.n_stylesheets, n))
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.xs)
-            .clip(SquircleShape(18.dp))
-            .background(colors.bg_secondary)
-            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.sm),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.ImageNotSupported,
-                contentDescription = null,
-                tint = colors.text_secondary,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(AsterSpacing.sm))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.detail_external_images_blocked),
-                    color = colors.text_primary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-                if (summary_parts.isNotEmpty()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = summary_parts.joinToString(", "),
-                        color = colors.text_muted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(AsterSpacing.sm))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
-        ) {
-            org.astermail.android.design.components.AsterDialogOutlineButton(
-                label = stringResource(R.string.detail_external_allow_once),
-                onClick = on_allow_once,
-                modifier = Modifier.weight(1f),
-            )
-            org.astermail.android.design.components.AsterDialogPrimaryButton(
-                label = stringResource(R.string.detail_external_always_allow),
-                onClick = on_always_allow,
-                modifier = Modifier.weight(1f),
-            )
-        }
+    val label = if (summary_parts.isNotEmpty()) summary_parts.joinToString(", ")
+        else stringResource(R.string.detail_external_images_blocked)
+    compact_banner(icon = Icons.Outlined.ImageNotSupported, label = label) {
+        compact_banner_action(
+            label = stringResource(R.string.detail_external_allow_once),
+            primary = false,
+            onClick = on_allow_once,
+        )
+        Spacer(Modifier.width(AsterSpacing.sm))
+        compact_banner_action(
+            label = stringResource(R.string.detail_external_always_allow),
+            primary = true,
+            onClick = on_always_allow,
+        )
     }
 }
 
@@ -1788,7 +1783,6 @@ private fun traffic_saver_banner(
     on_load_once: () -> Unit,
     on_disable_traffic_saving: () -> Unit,
 ) {
-    val colors = AsterMaterial.colors
     val summary_parts = mutableListOf<String>()
     if (counts.image_count > 0) {
         val n = counts.image_count
@@ -1798,55 +1792,20 @@ private fun traffic_saver_banner(
         val n = counts.font_count
         summary_parts.add(if (n == 1) stringResource(R.string.one_font) else stringResource(R.string.n_fonts, n))
     }
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.xs)
-            .clip(SquircleShape(18.dp))
-            .background(colors.bg_secondary)
-            .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.sm),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                imageVector = Icons.Outlined.ImageNotSupported,
-                contentDescription = null,
-                tint = colors.text_secondary,
-                modifier = Modifier.size(18.dp),
-            )
-            Spacer(Modifier.width(AsterSpacing.sm))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.detail_external_images_traffic_blocked),
-                    color = colors.text_primary,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Medium,
-                )
-                if (summary_parts.isNotEmpty()) {
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        text = summary_parts.joinToString(", "),
-                        color = colors.text_muted,
-                        fontSize = 12.sp,
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(AsterSpacing.sm))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm),
-        ) {
-            org.astermail.android.design.components.AsterDialogOutlineButton(
-                label = stringResource(R.string.detail_external_allow_once),
-                onClick = on_load_once,
-                modifier = Modifier.weight(1f),
-            )
-            org.astermail.android.design.components.AsterDialogPrimaryButton(
-                label = stringResource(R.string.detail_disable_traffic_saving),
-                onClick = on_disable_traffic_saving,
-                modifier = Modifier.weight(1f),
-            )
-        }
+    val label = if (summary_parts.isNotEmpty()) summary_parts.joinToString(", ")
+        else stringResource(R.string.detail_external_images_traffic_blocked)
+    compact_banner(icon = Icons.Outlined.ImageNotSupported, label = label) {
+        compact_banner_action(
+            label = stringResource(R.string.detail_external_allow_once),
+            primary = false,
+            onClick = on_load_once,
+        )
+        Spacer(Modifier.width(AsterSpacing.sm))
+        compact_banner_action(
+            label = stringResource(R.string.detail_disable_traffic_saving),
+            primary = true,
+            onClick = on_disable_traffic_saving,
+        )
     }
 }
 

@@ -320,7 +320,7 @@ fun InboxScreen(
         emails.clear()
         emails.addAll(merged)
     }
-    var is_refreshing by remember { mutableStateOf(inbox_state.is_loading) }
+    val is_refreshing = inbox_state.is_refreshing
     var sort_mode_user_set by remember { mutableStateOf(false) }
     var sort_mode by remember { mutableStateOf(InboxSortMode.newest) }
     var select_mode by remember { mutableStateOf(false) }
@@ -413,13 +413,8 @@ fun InboxScreen(
     }
 
     fun do_refresh() {
-        is_refreshing = true
         if (haptic_enabled) haptics.performHapticFeedback(HapticFeedbackType.LongPress)
         mail_vm.refresh()
-    }
-
-    LaunchedEffect(inbox_state.is_loading) {
-        if (!inbox_state.is_loading) is_refreshing = false
     }
 
     fun mark_all_read(target_read: Boolean) {
@@ -1073,24 +1068,6 @@ private fun inbox_top_bar(
                             },
                         )
                     }
-                }
-            }
-            if (show_upgrade) {
-                Box(
-                    modifier = Modifier
-                        .padding(horizontal = 4.dp)
-                        .clip(SquircleShape(999.dp))
-                        .background(colors.accent_blue)
-                        .clickable(onClick = on_open_upgrade)
-                        .padding(horizontal = 14.dp, vertical = 7.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = stringResource(R.string.upgrade),
-                        color = Color.White,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                    )
                 }
             }
             AsterIconButton(

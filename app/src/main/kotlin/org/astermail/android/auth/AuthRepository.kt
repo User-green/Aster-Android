@@ -109,10 +109,40 @@ class AuthRepository @Inject constructor(
         } catch (e: CancellationException) {
             throw e
         } catch (e: ApiError.UnauthorizedError) {
-            logout()
+            // The access token has likely expired. Ktor's bearer auth only
+            // auto-refreshes on a 401 carrying a WWW-Authenticate challenge,
+            // which the backend does not send, so we refresh explicitly before
+            // giving up. Only sign out if the refresh itself fails.
+            if (try_refresh_session()) {
+                try {
+                    auth_api.me()
+                } catch (e2: CancellationException) {
+                    throw e2
+                } catch (e2: ApiError.UnauthorizedError) {
+                    logout()
+                } catch (_: Throwable) {
+                }
+            } else {
+                logout()
+            }
         } catch (_: Throwable) {
         } finally {
             unauthorized_check_running.set(false)
+        }
+    }
+
+    private suspend fun try_refresh_session(): Boolean {
+        return try {
+            val current_refresh = token_store.refresh_token ?: return false
+            val response = auth_api.refresh(current_refresh)
+            val new_refresh = response.refresh_token ?: current_refresh
+            token_store.save(response.access_token, new_refresh)
+            api_client.invalidate_bearer_cache()
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Throwable) {
+            false
         }
     }
 

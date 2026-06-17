@@ -1187,28 +1187,39 @@ class MailRepository @Inject constructor(
 
     private fun strip_html(html: String): String {
         var text = html
-        text = text.replace(Regex("<style[^>]*>[\\s\\S]*?</style>", RegexOption.IGNORE_CASE), "")
-        text = text.replace(Regex("<script[^>]*>[\\s\\S]*?</script>", RegexOption.IGNORE_CASE), "")
-        text = text.replace(Regex("<br\\s*/?>", RegexOption.IGNORE_CASE), "\n")
-        text = text.replace(Regex("<[^>]+>"), "")
+        text = text.replace(Regex("<style[^>]*>[\\s\\S]*?</style>", RegexOption.IGNORE_CASE), " ")
+        text = text.replace(Regex("<script[^>]*>[\\s\\S]*?</script>", RegexOption.IGNORE_CASE), " ")
+        text = text.replace(Regex("<head[^>]*>[\\s\\S]*?</head>", RegexOption.IGNORE_CASE), " ")
+        text = text.replace(Regex("<[^>]+>"), " ")
         text = text.replace("&nbsp;", " ")
         text = text.replace("&amp;", "&")
         text = text.replace("&lt;", "<")
         text = text.replace("&gt;", ">")
         text = text.replace("&quot;", "\"")
         text = text.replace("&#39;", "'")
-        text = text.replace(Regex("\\n{3,}"), "\n\n")
-        text = text.replace(Regex("[ \\t]+"), " ")
+        text = text.replace("&apos;", "'")
+        text = text.replace("&mdash;", "-")
+        text = text.replace("&ndash;", "-")
+        text = text.replace("&hellip;", "...")
+        text = text.replace(Regex("&#(\\d+);")) { m ->
+            m.groupValues[1].toIntOrNull()?.let { code -> runCatching { String(Character.toChars(code)) }.getOrNull() } ?: " "
+        }
+        text = text.replace(Regex("&#x([0-9a-fA-F]+);")) { m ->
+            m.groupValues[1].toIntOrNull(16)?.let { code -> runCatching { String(Character.toChars(code)) }.getOrNull() } ?: " "
+        }
+        text = text.replace(Regex("&[a-zA-Z]+;"), " ")
+        text = text.replace(Regex("[\\u200B-\\u200F\\u202A-\\u202E\\u2060\\uFEFF\\u00AD\\u034F\\u115F\\u1160\\u17B4\\u17B5\\u180E\\u3164\\uFFA0]"), "")
+        text = text.replace(Regex("\\s+"), " ")
         return text.trim()
     }
 
     private fun clean_preview(body_text: String, body_html: String?): String {
         if (body_html != null && !body_html.contains("-----BEGIN PGP")) {
             val from_html = strip_html(body_html)
-            if (from_html.length > 10) return from_html.take(120)
+            if (from_html.length > 4) return from_html.take(140)
         }
         if (body_text.contains("-----BEGIN PGP")) return ""
-        return strip_html(body_text).take(120)
+        return strip_html(body_text).take(140)
     }
 
     private fun try_pgp_decrypt(ciphertext: String): String? {

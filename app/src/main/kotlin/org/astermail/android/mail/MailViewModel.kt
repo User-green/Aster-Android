@@ -68,6 +68,7 @@ data class InboxUiState(
     val total: Int = 0,
     val current_folder: String = "inbox",
     val stats: MailUserStatsResponse? = null,
+    val is_refreshing: Boolean = false,
 )
 
 data class ThreadUiState(
@@ -130,6 +131,7 @@ class MailViewModel @Inject constructor(
     private val folder_cache_time = java.util.concurrent.ConcurrentHashMap<String, Long>()
     private var inbox_load_job: Job? = null
     private var silent_revalidate_job: Job? = null
+    private var refresh_job: Job? = null
     private val star_overrides = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     private val pin_overrides = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
     private val read_overrides = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
@@ -553,7 +555,19 @@ class MailViewModel @Inject constructor(
         _thread_state.value = if (cur_thread.item?.id == item_id && cur_thread.messages.isNotEmpty()) {
             cur_thread.copy(is_loading = true, error = null)
         } else {
-            ThreadUiState(is_loading = true)
+            val seed = _inbox_state.value.items.find { it.id == item_id }
+                ?: folder_cache.values.firstNotNullOfOrNull { cached ->
+                    cached.items.find { it.id == item_id }
+                }
+            if (seed != null) {
+                ThreadUiState(
+                    is_loading = true,
+                    item = seed,
+                    messages = listOf(single_message_from_item(seed)),
+                )
+            } else {
+                ThreadUiState(is_loading = true)
+            }
         }
         viewModelScope.launch(Dispatchers.IO) {
             val item_result = withTimeoutOrNull(15_000) {
@@ -1318,9 +1332,52 @@ class MailViewModel @Inject constructor(
 
     fun refresh() {
         val folder = _inbox_state.value.current_folder
+        if (_inbox_state.value.is_refreshing) return
         folder_cache.remove(folder)
-        load_inbox(folder, force = true)
+        folder_cache_time.remove(folder)
+        _inbox_state.update { it.copy(is_refreshing = true) }
         load_stats()
+        inbox_load_job?.cancel()
+        silent_revalidate_job?.cancel()
+        refresh_job?.cancel()
+        refresh_job = viewModelScope.launch {
+            val result = runCatching {
+                kotlinx.coroutines.withTimeout(INBOX_FETCH_BACKSTOP_MS) {
+                    fetch_for_folder(folder).getOrThrow()
+                }
+            }
+            if (_inbox_state.value.current_folder != folder) {
+                _inbox_state.update { it.copy(is_refreshing = false) }
+                return@launch
+            }
+            result.fold(
+                onSuccess = { page ->
+                    val previous = _inbox_state.value.items
+                    val combined = merge_with_previous(page.items, previous, folder, page.total)
+                    val merged_items = apply_demo_overlay(
+                        apply_pin_overrides(apply_star_overrides(apply_read_overrides(combined))),
+                        folder,
+                    )
+                    _inbox_state.value = _inbox_state.value.copy(
+                        items = merged_items,
+                        is_loading = false,
+                        is_refreshing = false,
+                        initial = false,
+                        error = null,
+                        has_more = page.has_more,
+                        next_cursor = page.next_cursor,
+                        total = page.total,
+                    )
+                    folder_cache[folder] = _inbox_state.value
+                    folder_cache_time[folder] = System.currentTimeMillis()
+                    search_index_manager.on_items_loaded(page.items)
+                    search_index_manager.ensure_index_built()
+                },
+                onFailure = {
+                    _inbox_state.update { it.copy(is_refreshing = false) }
+                },
+            )
+        }
     }
 
     suspend fun send_email(
