@@ -2645,7 +2645,7 @@ private fun email_html_view(
         val declares_light = body.contains(Regex("color-scheme\\s*:\\s*light\\s+only", RegexOption.IGNORE_CASE))
         val declares_light_bg = is_html_body && body.contains(
             Regex(
-                "(?:background(?:-color)?\\s*:\\s*(?:#fff(?:fff)?\\b|white\\b|rgb\\(\\s*2(?:4[0-9]|5[0-5])\\s*,\\s*2(?:4[0-9]|5[0-5])\\s*,\\s*2(?:4[0-9]|5[0-5])))|bgcolor\\s*=\\s*[\"']?\\s*(?:#fff(?:fff)?|white))",
+                "(?:background(?:-color)?\\s*:\\s*(?:#fff(?:fff)?|white|rgb\\(\\s*25[0-5])|bgcolor\\s*=\\s*[\"']?(?:#fff(?:fff)?|white))",
                 RegexOption.IGNORE_CASE,
             ),
         )
