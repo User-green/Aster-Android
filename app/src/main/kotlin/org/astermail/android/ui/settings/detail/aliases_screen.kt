@@ -340,11 +340,11 @@ private fun aliases_tab(
                         Spacer(Modifier.width(4.dp))
                         AsterIconButton(
                             icon = Icons.Outlined.ContentCopy,
-                            content_description = "Copy",
+                            content_description = stringResource(R.string.copy),
                             onClick = {
                                 val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                                 cm.setPrimaryClip(ClipData.newPlainText("alias", alias.address))
-                                android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                                android.widget.Toast.makeText(context, context.getString(R.string.copied), android.widget.Toast.LENGTH_SHORT).show()
                             },
                         )
                         AsterIconButton(
@@ -385,11 +385,11 @@ private fun aliases_tab(
                     )
                     AsterIconButton(
                         icon = Icons.Outlined.ContentCopy,
-                        content_description = "Copy",
+                        content_description = stringResource(R.string.copy),
                         onClick = {
                             val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                             cm.setPrimaryClip(ClipData.newPlainText("alias", addr.address))
-                            android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                            android.widget.Toast.makeText(context, context.getString(R.string.copied), android.widget.Toast.LENGTH_SHORT).show()
                         },
                     )
                 }
