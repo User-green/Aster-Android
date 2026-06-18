@@ -30,6 +30,8 @@ import javax.inject.Singleton
 import org.astermail.android.api.ApiClient
 import org.astermail.android.api.BuildConfig
 import org.astermail.android.api.TokenProvider
+import org.astermail.android.api.account.AccountApi
+import org.astermail.android.api.account.AccountApiImpl
 import org.astermail.android.api.auth.AuthApi
 import org.astermail.android.api.auth.AuthApiImpl
 import org.astermail.android.api.billing.BillingApi
@@ -146,6 +148,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provide_auth_api(client: ApiClient): AuthApi = AuthApiImpl(client)
+
+    @Provides
+    @Singleton
+    fun provide_account_api(client: ApiClient): AccountApi = AccountApiImpl(client)
 
     @Provides
     @Singleton

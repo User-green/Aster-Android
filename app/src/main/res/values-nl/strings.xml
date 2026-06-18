@@ -1265,4 +1265,13 @@
     <string name="badges">Badges</string>
     <string name="no_badges_yet">Nog geen badges</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Account gepland voor verwijdering</string>
+    <string name="pending_deletion_body_days">Je account wordt over %1$d dagen verwijderd. Annuleer de verwijdering om je account te behouden en de toegang tot je e-mail en abonnement te herstellen.</string>
+    <string name="pending_deletion_body">Je account staat gepland voor verwijdering. Annuleer de verwijdering om je account te behouden en de toegang tot je e-mail en abonnement te herstellen.</string>
+    <string name="pending_deletion_keep">Mijn account behouden</string>
+    <string name="pending_deletion_sign_out">Afmelden</string>
+    <string name="pending_deletion_restoring">Herstellen…</string>
+    <string name="pending_deletion_error">Kan je account niet herstellen. Probeer het opnieuw.</string>
+    <string name="pending_deletion_restored">Welkom terug. Je account is hersteld.</string>
 </resources>

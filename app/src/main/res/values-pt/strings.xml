@@ -1265,4 +1265,13 @@
     <string name="badges">Selos</string>
     <string name="no_badges_yet">Nenhum selo ainda</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Conta agendada para exclusão</string>
+    <string name="pending_deletion_body_days">Sua conta será excluída em %1$d dias. Cancele a exclusão para manter sua conta e restaurar o acesso ao seu e-mail e assinatura.</string>
+    <string name="pending_deletion_body">Sua conta está agendada para exclusão. Cancele a exclusão para manter sua conta e restaurar o acesso ao seu e-mail e assinatura.</string>
+    <string name="pending_deletion_keep">Manter minha conta</string>
+    <string name="pending_deletion_sign_out">Sair</string>
+    <string name="pending_deletion_restoring">Restaurando…</string>
+    <string name="pending_deletion_error">Não foi possível restaurar sua conta. Tente novamente.</string>
+    <string name="pending_deletion_restored">Bem-vindo de volta. Sua conta foi restaurada.</string>
 </resources>

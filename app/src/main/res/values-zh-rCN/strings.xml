@@ -1263,4 +1263,13 @@
     <string name="badges">徽章</string>
     <string name="no_badges_yet">暂无徽章</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">账户已计划删除</string>
+    <string name="pending_deletion_body_days">您的账户将在 %1$d 天后被删除。取消删除即可保留账户并恢复对邮件和订阅的访问。</string>
+    <string name="pending_deletion_body">您的账户已计划删除。取消删除即可保留账户并恢复对邮件和订阅的访问。</string>
+    <string name="pending_deletion_keep">保留我的账户</string>
+    <string name="pending_deletion_sign_out">退出登录</string>
+    <string name="pending_deletion_restoring">正在恢复…</string>
+    <string name="pending_deletion_error">无法恢复您的账户。请重试。</string>
+    <string name="pending_deletion_restored">欢迎回来。您的账户已恢复。</string>
 </resources>

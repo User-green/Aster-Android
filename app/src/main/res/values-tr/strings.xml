@@ -1265,4 +1265,13 @@
     <string name="badges">Rozetler</string>
     <string name="no_badges_yet">Henuz rozet yok</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Hesap silinmek üzere planlandı</string>
+    <string name="pending_deletion_body_days">Hesabınız %1$d gün içinde silinecek. Hesabınızı korumak ve e-postanıza ve aboneliğinize erişimi geri yüklemek için silmeyi iptal edin.</string>
+    <string name="pending_deletion_body">Hesabınız silinmek üzere planlandı. Hesabınızı korumak ve e-postanıza ve aboneliğinize erişimi geri yüklemek için silmeyi iptal edin.</string>
+    <string name="pending_deletion_keep">Hesabımı koru</string>
+    <string name="pending_deletion_sign_out">Çıkış yap</string>
+    <string name="pending_deletion_restoring">Geri yükleniyor…</string>
+    <string name="pending_deletion_error">Hesabınız geri yüklenemedi. Lütfen tekrar deneyin.</string>
+    <string name="pending_deletion_restored">Tekrar hoş geldiniz. Hesabınız geri yüklendi.</string>
 </resources>

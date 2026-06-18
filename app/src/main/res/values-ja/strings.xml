@@ -1263,4 +1263,13 @@
     <string name="badges">バッジ</string>
     <string name="no_badges_yet">まだバッジはありません</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">アカウントは削除予定です</string>
+    <string name="pending_deletion_body_days">お客様のアカウントは%1$d日後に削除されます。削除をキャンセルすると、アカウントを保持し、メールとサブスクリプションへのアクセスを復元できます。</string>
+    <string name="pending_deletion_body">お客様のアカウントは削除予定です。削除をキャンセルすると、アカウントを保持し、メールとサブスクリプションへのアクセスを復元できます。</string>
+    <string name="pending_deletion_keep">アカウントを保持</string>
+    <string name="pending_deletion_sign_out">サインアウト</string>
+    <string name="pending_deletion_restoring">復元中…</string>
+    <string name="pending_deletion_error">アカウントを復元できませんでした。もう一度お試しください。</string>
+    <string name="pending_deletion_restored">おかえりなさい。アカウントが復元されました。</string>
 </resources>

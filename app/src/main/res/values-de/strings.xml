@@ -1266,4 +1266,13 @@
     <string name="badges">Abzeichen</string>
     <string name="no_badges_yet">Noch keine Abzeichen</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Konto zur Löschung vorgemerkt</string>
+    <string name="pending_deletion_body_days">Ihr Konto wird in %1$d Tagen gelöscht. Brechen Sie die Löschung ab, um Ihr Konto zu behalten und den Zugriff auf Ihre E-Mails und Ihr Abonnement wiederherzustellen.</string>
+    <string name="pending_deletion_body">Ihr Konto ist zur Löschung vorgemerkt. Brechen Sie die Löschung ab, um Ihr Konto zu behalten und den Zugriff auf Ihre E-Mails und Ihr Abonnement wiederherzustellen.</string>
+    <string name="pending_deletion_keep">Konto behalten</string>
+    <string name="pending_deletion_sign_out">Abmelden</string>
+    <string name="pending_deletion_restoring">Wird wiederhergestellt…</string>
+    <string name="pending_deletion_error">Ihr Konto konnte nicht wiederhergestellt werden. Bitte versuchen Sie es erneut.</string>
+    <string name="pending_deletion_restored">Willkommen zurück. Ihr Konto wurde wiederhergestellt.</string>
 </resources>

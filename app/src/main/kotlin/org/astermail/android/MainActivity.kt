@@ -995,6 +995,21 @@ composable(routes.settings_detail("family")) {
         }
     }
 
+    if (is_signed_in_state) {
+        org.astermail.android.ui.account.PendingDeletionGate(
+            on_reactivated = {
+                nav_controller.navigate(routes.inbox) {
+                    popUpTo(0) { inclusive = true }
+                }
+            },
+            on_signed_out = {
+                nav_controller.navigate(routes.welcome) {
+                    popUpTo(0) { inclusive = true }
+                }
+            },
+        )
+    }
+
     if (is_locked && is_signed_in_state) {
         AppLockScreen(
             store = lock_vm.store,

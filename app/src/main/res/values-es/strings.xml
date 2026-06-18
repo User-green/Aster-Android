@@ -1266,4 +1266,13 @@
     <string name="badges">Insignias</string>
     <string name="no_badges_yet">Sin insignias aun</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Cuenta programada para eliminación</string>
+    <string name="pending_deletion_body_days">Tu cuenta se eliminará en %1$d días. Cancela la eliminación para conservar tu cuenta y restaurar el acceso a tu correo y suscripción.</string>
+    <string name="pending_deletion_body">Tu cuenta está programada para eliminación. Cancela la eliminación para conservar tu cuenta y restaurar el acceso a tu correo y suscripción.</string>
+    <string name="pending_deletion_keep">Conservar mi cuenta</string>
+    <string name="pending_deletion_sign_out">Cerrar sesión</string>
+    <string name="pending_deletion_restoring">Restaurando…</string>
+    <string name="pending_deletion_error">No se pudo restaurar tu cuenta. Inténtalo de nuevo.</string>
+    <string name="pending_deletion_restored">Bienvenido de nuevo. Tu cuenta ha sido restaurada.</string>
 </resources>

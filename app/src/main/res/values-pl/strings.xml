@@ -1269,4 +1269,13 @@
     <string name="badges">Odznaki</string>
     <string name="no_badges_yet">Brak odznak</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Konto zaplanowane do usunięcia</string>
+    <string name="pending_deletion_body_days">Twoje konto zostanie usunięte za %1$d dni. Anuluj usuwanie, aby zachować konto i przywrócić dostęp do poczty i subskrypcji.</string>
+    <string name="pending_deletion_body">Twoje konto jest zaplanowane do usunięcia. Anuluj usuwanie, aby zachować konto i przywrócić dostęp do poczty i subskrypcji.</string>
+    <string name="pending_deletion_keep">Zachowaj moje konto</string>
+    <string name="pending_deletion_sign_out">Wyloguj się</string>
+    <string name="pending_deletion_restoring">Przywracanie…</string>
+    <string name="pending_deletion_error">Nie można przywrócić konta. Spróbuj ponownie.</string>
+    <string name="pending_deletion_restored">Witaj ponownie. Twoje konto zostało przywrócone.</string>
 </resources>

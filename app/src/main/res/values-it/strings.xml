@@ -1265,4 +1265,13 @@
     <string name="badges">Badge</string>
     <string name="no_badges_yet">Nessun badge ancora</string>
 
+    <!-- Pending account deletion -->
+    <string name="pending_deletion_title">Account programmato per l\'eliminazione</string>
+    <string name="pending_deletion_body_days">Il tuo account verrà eliminato tra %1$d giorni. Annulla l\'eliminazione per mantenere il tuo account e ripristinare l\'accesso alla posta e all\'abbonamento.</string>
+    <string name="pending_deletion_body">Il tuo account è programmato per l\'eliminazione. Annulla l\'eliminazione per mantenere il tuo account e ripristinare l\'accesso alla posta e all\'abbonamento.</string>
+    <string name="pending_deletion_keep">Mantieni il mio account</string>
+    <string name="pending_deletion_sign_out">Esci</string>
+    <string name="pending_deletion_restoring">Ripristino…</string>
+    <string name="pending_deletion_error">Impossibile ripristinare il tuo account. Riprova.</string>
+    <string name="pending_deletion_restored">Bentornato. Il tuo account è stato ripristinato.</string>
 </resources>
