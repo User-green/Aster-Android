@@ -140,6 +140,28 @@ private val free_features = listOf(
     R.string.settings_plan_bullet_zero_knowledge,
 )
 
+private val duo_features = listOf(
+    R.string.settings_plan_bullet_duo_storage,
+    R.string.settings_plan_bullet_duo_members,
+    R.string.settings_plan_bullet_unlimited_aliases,
+    R.string.settings_plan_bullet_shared_aliases,
+    R.string.settings_plan_bullet_nova_domains,
+    R.string.settings_plan_bullet_e2ee,
+    R.string.settings_plan_bullet_zero_knowledge,
+    R.string.settings_plan_bullet_priority_support,
+)
+
+private val family_features = listOf(
+    R.string.settings_plan_bullet_family_storage,
+    R.string.settings_plan_bullet_family_members,
+    R.string.settings_plan_bullet_unlimited_aliases,
+    R.string.settings_plan_bullet_shared_aliases,
+    R.string.settings_plan_bullet_nova_domains,
+    R.string.settings_plan_bullet_e2ee,
+    R.string.settings_plan_bullet_zero_knowledge,
+    R.string.settings_plan_bullet_priority_support,
+)
+
 private val plan_tiers = listOf(
     plan_tier(
         code = "star",
@@ -295,7 +317,11 @@ fun SubscriptionsScreen(
     val sub = state.subscription
     val current_code = sub?.plan?.code ?: plan_code_of(sub?.effective_plan_name)
     val current_features = remember(current_code) {
-        plan_tiers.firstOrNull { it.code == current_code }?.features ?: free_features
+        when (current_code) {
+            "family" -> family_features
+            "duo" -> duo_features
+            else -> plan_tiers.firstOrNull { it.code == current_code }?.features ?: free_features
+        }
     }
     val default_interval = stringResource(R.string.settings_interval_default)
     val plan_free_label = stringResource(R.string.plan_name_free)
@@ -313,6 +339,15 @@ fun SubscriptionsScreen(
             AsterCard(modifier = Modifier.fillMaxWidth()) {
                 Column(modifier = Modifier.padding(AsterSpacing.lg)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (current_code != "free") {
+                            Icon(
+                                imageVector = Icons.Outlined.Star,
+                                contentDescription = null,
+                                tint = colors.accent_blue,
+                                modifier = Modifier.size(24.dp),
+                            )
+                            Spacer(Modifier.width(AsterSpacing.md))
+                        }
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = sub?.effective_plan_name ?: plan_free_label,

@@ -1266,6 +1266,9 @@
     <string name="badges">Abzeichen</string>
     <string name="no_badges_yet">Noch keine Abzeichen</string>
 
+    <string name="no_recovery_codes_yet">Für dieses Konto wurden keine Wiederherstellungscodes gefunden. Erstellen Sie jetzt einen Satz, damit Sie wieder Zugriff erhalten, falls Sie Ihr Passwort verlieren.</string>
+    <string name="generate_recovery_codes">Wiederherstellungscodes erstellen</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Konto zur Löschung vorgemerkt</string>
     <string name="pending_deletion_body_days">Ihr Konto wird in %1$d Tagen gelöscht. Brechen Sie die Löschung ab, um Ihr Konto zu behalten und den Zugriff auf Ihre E-Mails und Ihr Abonnement wiederherzustellen.</string>

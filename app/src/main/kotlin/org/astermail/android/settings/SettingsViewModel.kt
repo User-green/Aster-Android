@@ -1051,6 +1051,9 @@ class SettingsViewModel @Inject constructor(
         return try {
             val result = encryption_api.regenerate_recovery_codes()
             _state.update { it.copy(recovery_codes_status = result.info) }
+            if (result.codes.isNotEmpty()) {
+                session_key_store.put_recovery_codes(result.codes)
+            }
             result.codes
         } catch (_: Throwable) { emptyList() }
     }

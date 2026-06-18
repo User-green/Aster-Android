@@ -1266,6 +1266,9 @@
     <string name="badges">Insignias</string>
     <string name="no_badges_yet">Sin insignias aun</string>
 
+    <string name="no_recovery_codes_yet">No se encontraron códigos de recuperación para esta cuenta. Genera un conjunto ahora para poder recuperar el acceso si pierdes tu contraseña.</string>
+    <string name="generate_recovery_codes">Generar códigos de recuperación</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Cuenta programada para eliminación</string>
     <string name="pending_deletion_body_days">Tu cuenta se eliminará en %1$d días. Cancela la eliminación para conservar tu cuenta y restaurar el acceso a tu correo y suscripción.</string>

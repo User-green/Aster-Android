@@ -118,15 +118,16 @@ fun NotificationsScreen(
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var push by remember { mutableStateOf(true) }
-    var sound by remember { mutableStateOf(true) }
-    var vibrate by remember { mutableStateOf(true) }
-    var new_email by remember { mutableStateOf(true) }
-    var replies by remember { mutableStateOf(true) }
-    var mentions by remember { mutableStateOf(true) }
-    var quiet_hours by remember { mutableStateOf(false) }
-    var quiet_hours_start by remember { mutableStateOf("22:00") }
-    var quiet_hours_end by remember { mutableStateOf("07:00") }
+    val prefs_seeded = prefs != null
+    var push by remember(prefs_seeded) { mutableStateOf(prefs?.push_notifications ?: true) }
+    var sound by remember(prefs_seeded) { mutableStateOf(prefs?.sound ?: true) }
+    var vibrate by remember(prefs_seeded) { mutableStateOf(prefs?.vibrate ?: true) }
+    var new_email by remember(prefs_seeded) { mutableStateOf(prefs?.notify_new_email ?: true) }
+    var replies by remember(prefs_seeded) { mutableStateOf(prefs?.notify_replies ?: true) }
+    var mentions by remember(prefs_seeded) { mutableStateOf(prefs?.notify_mentions ?: true) }
+    var quiet_hours by remember(prefs_seeded) { mutableStateOf(prefs?.quiet_hours_enabled ?: false) }
+    var quiet_hours_start by remember(prefs_seeded) { mutableStateOf(prefs?.quiet_hours_start?.takeIf { it.isNotBlank() } ?: "22:00") }
+    var quiet_hours_end by remember(prefs_seeded) { mutableStateOf(prefs?.quiet_hours_end?.takeIf { it.isNotBlank() } ?: "07:00") }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded by remember { mutableStateOf(false) }
 
@@ -213,7 +214,7 @@ fun NotificationsScreen(
         title = stringResource(R.string.notifications),
         on_back = on_back,
     ) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,

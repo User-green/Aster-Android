@@ -1265,6 +1265,9 @@
     <string name="badges">Badge</string>
     <string name="no_badges_yet">Nessun badge ancora</string>
 
+    <string name="no_recovery_codes_yet">Nessun codice di recupero trovato per questo account. Generane un set ora per poter recuperare l\'accesso se perdi la password.</string>
+    <string name="generate_recovery_codes">Genera codici di recupero</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Account programmato per l\'eliminazione</string>
     <string name="pending_deletion_body_days">Il tuo account verrà eliminato tra %1$d giorni. Annulla l\'eliminazione per mantenere il tuo account e ripristinare l\'accesso alla posta e all\'abbonamento.</string>

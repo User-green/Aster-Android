@@ -1265,6 +1265,9 @@
     <string name="badges">Badges</string>
     <string name="no_badges_yet">Nog geen badges</string>
 
+    <string name="no_recovery_codes_yet">Geen herstelcodes gevonden voor dit account. Genereer er nu een set zodat je weer toegang krijgt als je je wachtwoord kwijtraakt.</string>
+    <string name="generate_recovery_codes">Herstelcodes genereren</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Account gepland voor verwijdering</string>
     <string name="pending_deletion_body_days">Je account wordt over %1$d dagen verwijderd. Annuleer de verwijdering om je account te behouden en de toegang tot je e-mail en abonnement te herstellen.</string>

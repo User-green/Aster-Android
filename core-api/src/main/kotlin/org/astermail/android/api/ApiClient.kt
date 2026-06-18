@@ -23,11 +23,15 @@ package org.astermail.android.api
 
 import android.os.Build
 import io.ktor.client.HttpClient
+import io.ktor.client.call.HttpClientCall
 import io.ktor.client.call.body
+import io.ktor.client.call.save
 import io.ktor.client.engine.okhttp.OkHttp
 import okhttp3.ConnectionSpec
+import io.ktor.client.plugins.plugin
 import io.ktor.client.plugins.ClientRequestException
 import io.ktor.client.plugins.HttpResponseValidator
+import io.ktor.client.plugins.HttpSend
 import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.ServerResponseException
 import io.ktor.client.plugins.auth.Auth
@@ -42,6 +46,7 @@ import io.ktor.client.request.header
 import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
+import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpMethod
@@ -95,6 +100,7 @@ class ApiClient(
     private val csrf_endpoint: String = "/api/csrf/token",
     private val on_csrf_changed: (String?) -> Unit = {},
     initial_csrf: String? = null,
+    private val csrf_refresher: suspend () -> String? = { null },
 ) {
     val json: Json = Json {
         ignoreUnknownKeys = true
@@ -105,6 +111,8 @@ class ApiClient(
     }
 
     private val csrf_mutex = Mutex()
+
+    private val csrf_recovery_mutex = Mutex()
 
     @Volatile
     private var csrf_token: String? = initial_csrf
@@ -183,6 +191,53 @@ class ApiClient(
                     is ServerResponseException -> throw ApiError.ServerError(cause.response.status.value)
                     else -> Unit
                 }
+            }
+        }
+    }
+
+    init {
+        http.plugin(HttpSend).intercept { request ->
+            val original_call: HttpClientCall = execute(request)
+            if (original_call.response.status != HttpStatusCode.Forbidden) {
+                return@intercept original_call
+            }
+            val method = request.method
+            val is_unsafe = method != HttpMethod.Get &&
+                method != HttpMethod.Head &&
+                method != HttpMethod.Options
+            if (!is_unsafe) {
+                return@intercept original_call
+            }
+            val same_host = api_host == null || request.url.host == api_host
+            if (!same_host) {
+                return@intercept original_call
+            }
+            val saved_call = original_call.save()
+            val body_text = try {
+                saved_call.response.bodyAsText()
+            } catch (_: Throwable) {
+                ""
+            }
+            if (!body_text.contains("CSRF_INVALID")) {
+                return@intercept saved_call
+            }
+            val token_used = csrf_token
+            val fresh = csrf_recovery_mutex.withLock {
+                val current = csrf_token
+                if (!current.isNullOrEmpty() && current != token_used) {
+                    current
+                } else {
+                    try {
+                        csrf_refresher()
+                    } catch (_: Throwable) {
+                        null
+                    }
+                }
+            }
+            if (fresh.isNullOrEmpty()) {
+                saved_call
+            } else {
+                execute(request)
             }
         }
     }

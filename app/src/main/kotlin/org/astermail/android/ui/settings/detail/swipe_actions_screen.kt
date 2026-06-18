@@ -84,8 +84,9 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var swipe_right by remember { mutableStateOf("archive") }
-    var swipe_left by remember { mutableStateOf("trash") }
+    val prefs_seeded = prefs != null
+    var swipe_right by remember(prefs_seeded) { mutableStateOf(prefs?.swipe_right_action ?: "archive") }
+    var swipe_left by remember(prefs_seeded) { mutableStateOf(prefs?.swipe_left_action ?: "trash") }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded by remember { mutableStateOf(false) }
 
@@ -136,7 +137,7 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
         title = stringResource(R.string.swipe_actions),
         on_back = on_back,
     ) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,

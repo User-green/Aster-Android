@@ -122,6 +122,11 @@
 
     <string name="settings_plan_bullet_free_storage">10 GB encrypted storage</string>
     <string name="settings_plan_bullet_free_aliases">5 email aliases</string>
+    <string name="settings_plan_bullet_duo_storage">1 TB shared encrypted storage</string>
+    <string name="settings_plan_bullet_duo_members">2 members, separate accounts</string>
+    <string name="settings_plan_bullet_family_storage">3 TB shared encrypted storage</string>
+    <string name="settings_plan_bullet_family_members">Up to 6 members, separate accounts</string>
+    <string name="settings_plan_bullet_shared_aliases">Shared family aliases</string>
 
     <string name="settings_price_per_month">$%1$.2f / mo</string>
     <string name="settings_price_per_interval">$%1$.2f / %2$s</string>

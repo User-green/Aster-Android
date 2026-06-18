@@ -1269,6 +1269,9 @@
     <string name="badges">Значки</string>
     <string name="no_badges_yet">Пока нет значков</string>
 
+    <string name="no_recovery_codes_yet">Коды восстановления для этого аккаунта не найдены. Создайте их сейчас, чтобы восстановить доступ, если вы потеряете пароль.</string>
+    <string name="generate_recovery_codes">Создать коды восстановления</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Аккаунт запланирован к удалению</string>
     <string name="pending_deletion_body_days">Ваш аккаунт будет удалён через %1$d дн. Отмените удаление, чтобы сохранить аккаунт и восстановить доступ к почте и подписке.</string>

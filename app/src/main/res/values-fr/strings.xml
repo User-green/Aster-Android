@@ -1875,6 +1875,9 @@
     <string name="view_backup_recovery_key">Voir &amp; sauvegarder la clé de récupération</string>
     <string name="yesterday">Hier</string>
     <string name="your_key">Votre clé</string>
+    <string name="no_recovery_codes_yet">Aucun code de récupération trouvé pour ce compte. Générez-en maintenant afin de pouvoir récupérer l\'accès si vous perdez votre mot de passe.</string>
+    <string name="generate_recovery_codes">Générer des codes de récupération</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Compte programmé pour suppression</string>
     <string name="pending_deletion_body_days">Votre compte sera supprimé dans %1$d jours. Annulez la suppression pour conserver votre compte et restaurer l\'accès à vos e-mails et à votre abonnement.</string>

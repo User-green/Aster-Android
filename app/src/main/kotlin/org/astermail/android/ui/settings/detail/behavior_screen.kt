@@ -154,24 +154,25 @@ fun BehaviorScreen(
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var mark_read by remember { mutableStateOf("1_second") }
-    var conversation_grouping by remember { mutableStateOf(true) }
-    var conversation_order by remember { mutableStateOf("newest") }
-    var show_message_size by remember { mutableStateOf(false) }
-    var force_dark_emails by remember { mutableStateOf(false) }
-    var default_reply by remember { mutableStateOf("reply") }
-    var auto_save_recipients by remember { mutableStateOf(true) }
-    var undo_send by remember { mutableStateOf(true) }
-    var undo_send_secs by remember { mutableIntStateOf(10) }
-    var confirm_delete by remember { mutableStateOf(false) }
-    var confirm_archive by remember { mutableStateOf(false) }
-    var confirm_spam by remember { mutableStateOf(false) }
-    var spam_filter_enabled by remember { mutableStateOf(true) }
-    var spam_sensitivity by remember { mutableStateOf("medium") }
-    var auto_delete_spam_days by remember { mutableIntStateOf(30) }
-    var folder_lock_mode by remember { mutableStateOf("session") }
-    var haptic by remember { mutableStateOf(true) }
-    var dev_mode by remember { mutableStateOf(false) }
+    val prefs_loaded = prefs != null
+    var mark_read by remember(prefs_loaded) { mutableStateOf(prefs?.mark_as_read ?: "1_second") }
+    var conversation_grouping by remember(prefs_loaded) { mutableStateOf(prefs?.conversation_grouping ?: true) }
+    var conversation_order by remember(prefs_loaded) { mutableStateOf(prefs?.conversation_order ?: "newest") }
+    var show_message_size by remember(prefs_loaded) { mutableStateOf(prefs?.show_message_size ?: false) }
+    var force_dark_emails by remember(prefs_loaded) { mutableStateOf(prefs?.force_dark_emails ?: false) }
+    var default_reply by remember(prefs_loaded) { mutableStateOf(prefs?.default_reply_behavior ?: "reply") }
+    var auto_save_recipients by remember(prefs_loaded) { mutableStateOf(prefs?.auto_save_recent_recipients ?: true) }
+    var undo_send by remember(prefs_loaded) { mutableStateOf(prefs?.undo_send_enabled ?: true) }
+    var undo_send_secs by remember(prefs_loaded) { mutableIntStateOf(prefs?.undo_send_seconds ?: 10) }
+    var confirm_delete by remember(prefs_loaded) { mutableStateOf(prefs?.confirm_delete ?: false) }
+    var confirm_archive by remember(prefs_loaded) { mutableStateOf(prefs?.confirm_archive ?: false) }
+    var confirm_spam by remember(prefs_loaded) { mutableStateOf(prefs?.confirm_spam ?: false) }
+    var spam_filter_enabled by remember(prefs_loaded) { mutableStateOf(prefs?.spam_filter_enabled ?: true) }
+    var spam_sensitivity by remember(prefs_loaded) { mutableStateOf(prefs?.spam_sensitivity ?: "medium") }
+    var auto_delete_spam_days by remember(prefs_loaded) { mutableIntStateOf(prefs?.auto_delete_spam_days ?: 30) }
+    var folder_lock_mode by remember(prefs_loaded) { mutableStateOf(prefs?.folder_lock_mode ?: "session") }
+    var haptic by remember(prefs_loaded) { mutableStateOf(prefs?.haptic_feedback ?: true) }
+    var dev_mode by remember(prefs_loaded) { mutableStateOf(prefs?.dev_mode ?: false) }
     var save_trigger by remember { mutableIntStateOf(0) }
     var loaded_signature by remember { mutableStateOf<Int?>(null) }
 
@@ -240,7 +241,7 @@ fun BehaviorScreen(
     }
 
     detail_scaffold(title = stringResource(R.string.settings_behavior), on_back = on_back) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
             }

@@ -122,6 +122,11 @@
 
     <string name="settings_plan_bullet_free_storage">10 Go de stockage chiffré</string>
     <string name="settings_plan_bullet_free_aliases">5 alias e-mail</string>
+    <string name="settings_plan_bullet_duo_storage">1 To de stockage chiffré partagé</string>
+    <string name="settings_plan_bullet_duo_members">2 membres, comptes séparés</string>
+    <string name="settings_plan_bullet_family_storage">3 To de stockage chiffré partagé</string>
+    <string name="settings_plan_bullet_family_members">Jusqu\'à 6 membres, comptes séparés</string>
+    <string name="settings_plan_bullet_shared_aliases">Alias familiaux partagés</string>
 
     <string name="settings_price_per_month">%1$.2f $ / mois</string>
     <string name="settings_price_per_interval">%1$.2f $ / %2$s</string>

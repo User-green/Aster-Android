@@ -137,15 +137,16 @@ fun AccessibilityScreen(
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var font_size by remember { mutableStateOf("default") }
-    var high_contrast by remember { mutableStateOf(false) }
-    var reduce_transparency by remember { mutableStateOf(false) }
-    var underline_links by remember { mutableStateOf(false) }
-    var dyslexia by remember { mutableStateOf(false) }
-    var text_spacing by remember { mutableStateOf(false) }
-    var reduce_motion by remember { mutableStateOf(false) }
-    var compact by remember { mutableStateOf(false) }
-    var low_network by remember { mutableStateOf(false) }
+    val prefs_seeded = prefs != null
+    var font_size by remember(prefs_seeded) { mutableStateOf(prefs?.font_size_scale ?: "default") }
+    var high_contrast by remember(prefs_seeded) { mutableStateOf(prefs?.high_contrast ?: false) }
+    var reduce_transparency by remember(prefs_seeded) { mutableStateOf(prefs?.reduce_transparency ?: false) }
+    var underline_links by remember(prefs_seeded) { mutableStateOf(prefs?.underline_links ?: false) }
+    var dyslexia by remember(prefs_seeded) { mutableStateOf(prefs?.dyslexia_font ?: false) }
+    var text_spacing by remember(prefs_seeded) { mutableStateOf(prefs?.text_spacing ?: false) }
+    var reduce_motion by remember(prefs_seeded) { mutableStateOf(prefs?.reduce_motion ?: false) }
+    var compact by remember(prefs_seeded) { mutableStateOf(prefs?.compact_mode ?: false) }
+    var low_network by remember(prefs_seeded) { mutableStateOf(prefs?.low_network_mode ?: false) }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded by remember { mutableStateOf(false) }
 
@@ -201,7 +202,7 @@ fun AccessibilityScreen(
     }
 
     detail_scaffold(title = stringResource(R.string.settings_accessibility), on_back = on_back) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = colors.accent_blue, modifier = Modifier.size(24.dp))
             }

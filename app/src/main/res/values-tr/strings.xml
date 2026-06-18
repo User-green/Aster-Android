@@ -1265,6 +1265,9 @@
     <string name="badges">Rozetler</string>
     <string name="no_badges_yet">Henuz rozet yok</string>
 
+    <string name="no_recovery_codes_yet">Bu hesap için kurtarma kodu bulunamadı. Parolanızı kaybederseniz erişimi geri kazanabilmek için şimdi bir set oluşturun.</string>
+    <string name="generate_recovery_codes">Kurtarma kodları oluştur</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Hesap silinmek üzere planlandı</string>
     <string name="pending_deletion_body_days">Hesabınız %1$d gün içinde silinecek. Hesabınızı korumak ve e-postanıza ve aboneliğinize erişimi geri yüklemek için silmeyi iptal edin.</string>

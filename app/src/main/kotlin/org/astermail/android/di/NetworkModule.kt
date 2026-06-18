@@ -138,12 +138,29 @@ object NetworkModule {
     fun provide_api_client(
         token_provider: TokenProvider,
         token_store: TokenStore,
-    ): ApiClient = ApiClient(
-        base_url = BuildConfig.API_BASE_URL,
-        token_provider = token_provider,
-        on_csrf_changed = { token -> token_store.save_csrf(token) },
-        initial_csrf = token_store.csrf_token,
-    )
+        auth_api: dagger.Lazy<AuthApi>,
+    ): ApiClient {
+        lateinit var client: ApiClient
+        client = ApiClient(
+            base_url = BuildConfig.API_BASE_URL,
+            token_provider = token_provider,
+            on_csrf_changed = { token -> token_store.save_csrf(token) },
+            initial_csrf = token_store.csrf_token,
+            csrf_refresher = {
+                try {
+                    val current_refresh = token_store.refresh_token
+                    val response = auth_api.get().refresh(current_refresh)
+                    val new_refresh = response.refresh_token ?: current_refresh ?: response.access_token
+                    token_store.save(response.access_token, new_refresh)
+                    client.invalidate_bearer_cache()
+                    client.get_csrf()
+                } catch (_: Throwable) {
+                    null
+                }
+            },
+        )
+        return client
+    }
 
     @Provides
     @Singleton

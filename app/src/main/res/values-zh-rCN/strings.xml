@@ -1263,6 +1263,9 @@
     <string name="badges">徽章</string>
     <string name="no_badges_yet">暂无徽章</string>
 
+    <string name="no_recovery_codes_yet">未找到此账户的恢复代码。立即生成一组，以便在忘记密码时恢复访问。</string>
+    <string name="generate_recovery_codes">生成恢复代码</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">账户已计划删除</string>
     <string name="pending_deletion_body_days">您的账户将在 %1$d 天后被删除。取消删除即可保留账户并恢复对邮件和订阅的访问。</string>

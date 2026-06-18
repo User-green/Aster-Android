@@ -1269,6 +1269,9 @@
     <string name="badges">Odznaki</string>
     <string name="no_badges_yet">Brak odznak</string>
 
+    <string name="no_recovery_codes_yet">Nie znaleziono kodów odzyskiwania dla tego konta. Wygeneruj je teraz, aby odzyskać dostęp w razie utraty hasła.</string>
+    <string name="generate_recovery_codes">Generuj kody odzyskiwania</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Konto zaplanowane do usunięcia</string>
     <string name="pending_deletion_body_days">Twoje konto zostanie usunięte za %1$d dni. Anuluj usuwanie, aby zachować konto i przywrócić dostęp do poczty i subskrypcji.</string>

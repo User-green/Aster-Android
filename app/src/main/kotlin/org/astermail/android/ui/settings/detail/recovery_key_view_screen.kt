@@ -85,9 +85,8 @@ fun RecoveryKeyViewScreen(
     var unlocked by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var is_verifying by remember { mutableStateOf(false) }
-    val codes = remember(unlocked) {
-        if (unlocked) vm.get_recovery_codes() else null
-    }
+    var codes by remember { mutableStateOf<List<String>?>(null) }
+    var is_generating by remember { mutableStateOf(false) }
 
     detail_scaffold(title = stringResource(R.string.recovery_key), on_back = on_back) {
         if (!unlocked) {
@@ -152,6 +151,7 @@ fun RecoveryKeyViewScreen(
                         val valid = vm.verify_password(password)
                         is_verifying = false
                         if (valid) {
+                            codes = vm.get_recovery_codes()
                             unlocked = true
                         } else {
                             error = context.getString(R.string.incorrect_password)
@@ -200,15 +200,16 @@ fun RecoveryKeyViewScreen(
                         .padding(AsterSpacing.lg)
                         .fillMaxWidth(),
                 ) {
-                    if (codes.isNullOrEmpty()) {
+                    val current_codes = codes
+                    if (current_codes.isNullOrEmpty()) {
                         Text(
-                            text = stringResource(R.string.no_recovery_key_found),
+                            text = stringResource(R.string.no_recovery_codes_yet),
                             color = colors.text_tertiary,
                             fontSize = 14.sp,
                             lineHeight = 20.sp,
                         )
                     } else {
-                        codes.forEachIndexed { index, code ->
+                        current_codes.forEachIndexed { index, code ->
                             if (index > 0) Spacer(Modifier.size(AsterSpacing.sm))
                             Text(
                                 text = code,
@@ -219,6 +220,32 @@ fun RecoveryKeyViewScreen(
                             )
                         }
                     }
+                }
+            }
+            AnimatedVisibility(
+                visible = codes.isNullOrEmpty(),
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column {
+                    v_gap(AsterSpacing.lg)
+                    AsterButton(
+                        label = if (is_generating) stringResource(R.string.generating) else stringResource(R.string.generate_recovery_codes),
+                        onClick = {
+                            is_generating = true
+                            scope.launch {
+                                val generated = vm.regenerate_recovery_codes_now()
+                                is_generating = false
+                                if (generated.isNotEmpty()) {
+                                    codes = generated
+                                } else {
+                                    Toast.makeText(context, context.getString(R.string.something_went_wrong), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        },
+                        enabled = !is_generating,
+                        is_loading = is_generating,
+                    )
                 }
             }
             AnimatedVisibility(

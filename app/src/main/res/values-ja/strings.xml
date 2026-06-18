@@ -1263,6 +1263,9 @@
     <string name="badges">バッジ</string>
     <string name="no_badges_yet">まだバッジはありません</string>
 
+    <string name="no_recovery_codes_yet">このアカウントの復元コードが見つかりません。パスワードを忘れた場合にアクセスを回復できるよう、今すぐ生成してください。</string>
+    <string name="generate_recovery_codes">復元コードを生成</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">アカウントは削除予定です</string>
     <string name="pending_deletion_body_days">お客様のアカウントは%1$d日後に削除されます。削除をキャンセルすると、アカウントを保持し、メールとサブスクリプションへのアクセスを復元できます。</string>

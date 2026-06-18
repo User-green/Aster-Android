@@ -752,10 +752,11 @@ fun DeveloperScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var dev_mode by remember { mutableStateOf(false) }
-    var show_raw_headers by remember { mutableStateOf(false) }
-    var allow_insecure by remember { mutableStateOf(false) }
-    var verbose_logs by remember { mutableStateOf(false) }
+    val prefs_seeded = prefs != null
+    var dev_mode by remember(prefs_seeded) { mutableStateOf(prefs?.dev_mode ?: false) }
+    var show_raw_headers by remember(prefs_seeded) { mutableStateOf(prefs?.show_raw_headers ?: false) }
+    var allow_insecure by remember(prefs_seeded) { mutableStateOf(prefs?.allow_insecure ?: false) }
+    var verbose_logs by remember(prefs_seeded) { mutableStateOf(prefs?.verbose_logs ?: false) }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded_dev by remember { mutableStateOf(false) }
 
@@ -800,7 +801,7 @@ fun DeveloperScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
         title = stringResource(R.string.developer),
         on_back = on_back,
     ) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,
@@ -988,12 +989,13 @@ fun PrivacyScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var block_trackers by remember { mutableStateOf(true) }
-    var remote_images by remember { mutableStateOf(false) }
-    var send_receipts by remember { mutableStateOf(false) }
-    var link_warnings by remember { mutableStateOf(true) }
-    var strip_exif by remember { mutableStateOf(true) }
-    var ghost_mode by remember { mutableStateOf(false) }
+    val prefs_seeded = prefs != null
+    var block_trackers by remember(prefs_seeded) { mutableStateOf(prefs?.block_trackers ?: true) }
+    var remote_images by remember(prefs_seeded) { mutableStateOf(prefs?.load_remote_images ?: false) }
+    var send_receipts by remember(prefs_seeded) { mutableStateOf(prefs?.send_read_receipts ?: false) }
+    var link_warnings by remember(prefs_seeded) { mutableStateOf(prefs?.warn_suspicious_links ?: true) }
+    var strip_exif by remember(prefs_seeded) { mutableStateOf(prefs?.strip_exif ?: true) }
+    var ghost_mode by remember(prefs_seeded) { mutableStateOf(prefs?.ghost_mode ?: false) }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded_priv by remember { mutableStateOf(false) }
 
@@ -1042,7 +1044,7 @@ fun PrivacyScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
         title = stringResource(R.string.privacy),
         on_back = on_back,
     ) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,
@@ -1297,7 +1299,8 @@ fun ConnectionScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    var low_network_mode by remember { mutableStateOf(false) }
+    val prefs_seeded = prefs != null
+    var low_network_mode by remember(prefs_seeded) { mutableStateOf(prefs?.low_network_mode ?: false) }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded_conn by remember { mutableStateOf(false) }
 
@@ -1329,7 +1332,7 @@ fun ConnectionScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
     }
 
     detail_scaffold(title = stringResource(R.string.settings_connection), on_back = on_back) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,
@@ -1384,7 +1387,8 @@ fun LanguageScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
         "ar" to "Arabic",
         "hi" to "Hindi",
     )
-    var selected by remember { mutableStateOf("en") }
+    val prefs_seeded = prefs != null
+    var selected by remember(prefs_seeded) { mutableStateOf(prefs?.language ?: "en") }
     var lang_loaded by remember { mutableStateOf(false) }
 
     LaunchedEffect(prefs) {
@@ -1401,7 +1405,7 @@ fun LanguageScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
     }
 
     detail_scaffold(title = stringResource(R.string.language), on_back = on_back) {
-        if (state.is_loading && prefs == null) {
+        if (prefs == null) {
             Box(
                 modifier = Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
                 contentAlignment = Alignment.Center,

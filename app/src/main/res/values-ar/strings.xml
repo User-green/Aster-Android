@@ -1273,6 +1273,9 @@
     <string name="badges">الشارات</string>
     <string name="no_badges_yet">لا توجد شارات بعد</string>
 
+    <string name="no_recovery_codes_yet">لم يتم العثور على رموز استرداد لهذا الحساب. أنشئ مجموعة الآن حتى تتمكن من استعادة الوصول إذا فقدت كلمة المرور.</string>
+    <string name="generate_recovery_codes">إنشاء رموز الاسترداد</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">الحساب مُجدول للحذف</string>
     <string name="pending_deletion_body_days">سيتم حذف حسابك خلال %1$d يومًا. ألغِ الحذف للاحتفاظ بحسابك واستعادة الوصول إلى بريدك واشتراكك.</string>

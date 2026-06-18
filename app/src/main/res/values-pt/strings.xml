@@ -1265,6 +1265,9 @@
     <string name="badges">Selos</string>
     <string name="no_badges_yet">Nenhum selo ainda</string>
 
+    <string name="no_recovery_codes_yet">Nenhum código de recuperação encontrado para esta conta. Gere um conjunto agora para recuperar o acesso caso perca sua senha.</string>
+    <string name="generate_recovery_codes">Gerar códigos de recuperação</string>
+
     <!-- Pending account deletion -->
     <string name="pending_deletion_title">Conta agendada para exclusão</string>
     <string name="pending_deletion_body_days">Sua conta será excluída em %1$d dias. Cancele a exclusão para manter sua conta e restaurar o acesso ao seu e-mail e assinatura.</string>
