@@ -54,6 +54,8 @@ import org.astermail.android.api.recovery.RecoveryApi
 import org.astermail.android.api.recovery.RecoveryApiImpl
 import org.astermail.android.api.recovery_email.RecoveryEmailApi
 import org.astermail.android.api.recovery_email.RecoveryEmailApiImpl
+import org.astermail.android.api.family.FamilyApi
+import org.astermail.android.api.family.FamilyApiImpl
 import org.astermail.android.api.ghost.GhostAliasApi
 import org.astermail.android.api.ghost.GhostAliasApiImpl
 import org.astermail.android.api.snooze.SnoozeApi
@@ -213,6 +215,10 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provide_signatures_api(client: ApiClient): SignaturesApi = SignaturesApiImpl(client)
+
+    @Provides
+    @Singleton
+    fun provide_family_api(client: ApiClient): FamilyApi = FamilyApiImpl(client)
 
     @Provides
     @Singleton

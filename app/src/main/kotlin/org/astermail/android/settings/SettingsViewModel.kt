@@ -52,6 +52,8 @@ import org.astermail.android.api.developer.ApiKeyInfo
 import org.astermail.android.api.developer.CreateApiKeyRequest
 import org.astermail.android.api.developer.DeveloperApi
 import org.astermail.android.api.developer.WebhookInfo
+import org.astermail.android.api.family.FamilyApi
+import org.astermail.android.api.family.ReservedAddress
 import org.astermail.android.api.ghost.CreateGhostAliasRequest
 import org.astermail.android.api.ghost.GhostAlias
 import org.astermail.android.api.ghost.GhostAliasApi
@@ -117,6 +119,9 @@ data class SettingsUiState(
     val tags: List<TagItem> = emptyList(),
     val referral: ReferralInfoResponse? = null,
     val preferences: UserPreferences? = null,
+    val reserved_addresses: List<ReservedAddress> = emptyList(),
+    val family_seats_used: Int = 0,
+    val family_max_members: Int = 0,
     val ghost_aliases: List<GhostAlias> = emptyList(),
     val forwarding_rules: List<ForwardingRule> = emptyList(),
     val api_keys: List<ApiKeyInfo> = emptyList(),
@@ -167,6 +172,7 @@ class SettingsViewModel @Inject constructor(
     private val tags_api: TagsApi,
     private val preferences_api: PreferencesApi,
     private val signatures_api: org.astermail.android.api.signatures.SignaturesApi,
+    private val family_api: FamilyApi,
     private val ghost_alias_api: GhostAliasApi,
     private val auto_forward_api: AutoForwardApi,
     private val developer_api: DeveloperApi,
@@ -849,6 +855,28 @@ class SettingsViewModel @Inject constructor(
             try {
                 security_api.delete_hardware_key(key_id)
                 _state.update { it.copy(hardware_keys = it.hardware_keys.filter { k -> k.id != key_id }) }
+            } catch (_: Throwable) {
+                _state.value = _state.value.copy(action_result = context.getString(R.string.something_went_wrong))
+            }
+        }
+    }
+
+    fun rename_hardware_key(key_id: String, name: String) {
+        viewModelScope.launch {
+            try {
+                val resp = security_api.rename_hardware_key(key_id, name.trim())
+                if (resp.success) {
+                    _state.update { st ->
+                        st.copy(
+                            hardware_keys = st.hardware_keys.map { k ->
+                                if (k.id == key_id) k.copy(name = resp.name_encrypted) else k
+                            },
+                            action_result = context.getString(R.string.hardware_key_renamed),
+                        )
+                    }
+                } else {
+                    _state.value = _state.value.copy(action_result = context.getString(R.string.something_went_wrong))
+                }
             } catch (_: Throwable) {
                 _state.value = _state.value.copy(action_result = context.getString(R.string.something_went_wrong))
             }
@@ -2425,6 +2453,51 @@ class SettingsViewModel @Inject constructor(
             encrypted_preferences = android.util.Base64.encodeToString(ciphertext, android.util.Base64.NO_WRAP),
             preferences_nonce = android.util.Base64.encodeToString(nonce, android.util.Base64.NO_WRAP),
         )
+    }
+
+    fun load_reserved_addresses() {
+        viewModelScope.launch {
+            _state.update { it.copy(is_loading = true, error = null) }
+            try {
+                val r = family_api.list_reservations()
+                _state.update { it.copy(
+                    reserved_addresses = r.reservations,
+                    family_seats_used = r.seats_used,
+                    family_max_members = r.max_members,
+                    is_loading = false,
+                ) }
+            } catch (t: Throwable) {
+                _state.update { it.copy(is_loading = false, error = t.message) }
+            }
+        }
+    }
+
+    fun release_reservation(id: String, on_done: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                family_api.release_reservation(id)
+                _state.update { it.copy(reserved_addresses = it.reserved_addresses.filter { r -> r.id != id }) }
+                on_done(true)
+            } catch (_: Throwable) {
+                on_done(false)
+            }
+        }
+    }
+
+    fun regenerate_reservation_link(id: String, on_done: (String?) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val r = family_api.regenerate_claim_link(id)
+                _state.update { it.copy(
+                    reserved_addresses = it.reserved_addresses.map { a ->
+                        if (a.id == id) a.copy(claim_url = r.claim_url) else a
+                    },
+                ) }
+                on_done(r.claim_url)
+            } catch (_: Throwable) {
+                on_done(null)
+            }
+        }
     }
 
     companion object {

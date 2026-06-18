@@ -1765,6 +1765,9 @@
     <string name="encryption_keys_subtitle">Manage your encryption keys and settings</string>
     <string name="hardware_key_default_name">Security key</string>
     <string name="hardware_key_remove">Remove key</string>
+    <string name="hardware_key_rename">Rename key</string>
+    <string name="hardware_key_rename_placeholder">Name this key</string>
+    <string name="hardware_key_renamed">Name updated</string>
     <string name="trusted_device_default_label">Trusted device</string>
     <string name="trusted_device_expires">Expires</string>
     <string name="trusted_device_revoke">Revoke device</string>
@@ -1971,6 +1974,23 @@
     <string name="no_family_plan">Not on a family plan</string>
     <string name="no_family_plan_subtitle">A family plan lets you share storage and features with up to 5 members.</string>
     <string name="view_plans">View Plans</string>
+    <string name="kids_reserved_addresses">Reserved addresses for kids</string>
+    <string name="kids_reserved_subtitle">Hold an address for your child. Share the claim link so they can finish setup with their own password.</string>
+    <string name="kids_seats_used">%1$d of %2$d family seats used</string>
+    <string name="kids_no_reservations">No reserved addresses yet. Reserve one on astermail.org.</string>
+    <string name="kids_reserve_on_web">Reserve on web</string>
+    <string name="kids_status_reserved">Reserved</string>
+    <string name="kids_status_active">Active</string>
+    <string name="kids_copy_link">Copy claim link</string>
+    <string name="kids_regenerate">Regenerate link</string>
+    <string name="kids_release">Release</string>
+    <string name="kids_release_confirm_title">Release this address?</string>
+    <string name="kids_release_confirm_body">%1$s will become available to anyone. This cannot be undone.</string>
+    <string name="kids_link_copied">Claim link copied</string>
+    <string name="kids_link_regenerated">New claim link generated</string>
+    <string name="kids_released">Reservation released</string>
+    <string name="kids_load_failed">Could not load reservations</string>
+    <string name="kids_action_failed">Action failed. Please try again.</string>
 
     <!-- Connection screen -->
     <string name="settings_connection">Connection</string>

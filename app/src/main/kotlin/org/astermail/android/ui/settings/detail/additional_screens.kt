@@ -1258,6 +1258,13 @@ fun FamilyScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
                         )
                     },
                 )
+                AsterDivider(modifier = Modifier)
+                detail_row(
+                    title = stringResource(R.string.kids_reserved_addresses),
+                    subtitle = stringResource(R.string.kids_reserved_subtitle),
+                    icon = Icons.Outlined.Group,
+                    on_click = { on_open("family_kids") },
+                )
             }
         } else {
             AsterCard(modifier = Modifier.fillMaxWidth()) {
@@ -1287,6 +1294,165 @@ fun FamilyScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
             )
         }
         v_gap(AsterSpacing.xxl)
+    }
+}
+
+@Composable
+fun KidsReservedScreen(on_back: () -> Unit) {
+    val vm: SettingsViewModel = hiltViewModel()
+    val state by vm.state.collectAsStateWithLifecycle()
+    val colors = AsterMaterial.colors
+    val context = LocalContext.current
+    var release_target by remember { mutableStateOf<org.astermail.android.api.family.ReservedAddress?>(null) }
+
+    LaunchedEffect(Unit) { vm.load_reserved_addresses() }
+
+    fun copy_to_clipboard(text: String, label: String) {
+        val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        cm.setPrimaryClip(ClipData.newPlainText(label, text))
+        Toast.makeText(context, label, Toast.LENGTH_SHORT).show()
+    }
+
+    detail_scaffold(title = stringResource(R.string.kids_reserved_addresses), on_back = on_back) {
+        section_label(stringResource(R.string.kids_reserved_subtitle))
+
+        if (state.family_max_members > 0) {
+            Text(
+                text = stringResource(R.string.kids_seats_used, state.family_seats_used, state.family_max_members),
+                color = colors.text_tertiary,
+                fontSize = 12.sp,
+                modifier = androidx.compose.ui.Modifier.padding(bottom = AsterSpacing.sm),
+            )
+        }
+
+        AsterButton(
+            label = stringResource(R.string.kids_reserve_on_web),
+            onClick = {
+                context.startActivity(
+                    Intent(Intent.ACTION_VIEW, Uri.parse("https://app.astermail.org/settings/family")),
+                )
+            },
+        )
+
+        v_gap(AsterSpacing.lg)
+
+        if (state.is_loading && state.reserved_addresses.isEmpty()) {
+            Box(
+                modifier = androidx.compose.ui.Modifier.fillMaxWidth().padding(AsterSpacing.xxl),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = colors.accent_blue, modifier = androidx.compose.ui.Modifier.size(24.dp))
+            }
+        } else if (state.reserved_addresses.isEmpty()) {
+            AsterCard(modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+                detail_row(
+                    title = stringResource(R.string.kids_no_reservations),
+                    subtitle = state.error,
+                )
+            }
+        } else {
+            AsterCard(modifier = androidx.compose.ui.Modifier.fillMaxWidth()) {
+                state.reserved_addresses.forEachIndexed { idx, r ->
+                    Column(
+                        modifier = androidx.compose.ui.Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.md),
+                    ) {
+                        Row(
+                            modifier = androidx.compose.ui.Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Column(modifier = androidx.compose.ui.Modifier.weight(1f)) {
+                                Text(
+                                    text = "${r.username}@${r.email_domain}",
+                                    color = colors.text_primary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                )
+                                if (!r.label.isNullOrBlank()) {
+                                    Spacer(androidx.compose.ui.Modifier.height(2.dp))
+                                    Text(r.label ?: "", color = colors.text_secondary, fontSize = 12.sp)
+                                }
+                            }
+                            Text(
+                                text = if (r.status == "reserved") stringResource(R.string.kids_status_reserved)
+                                       else stringResource(R.string.kids_status_active),
+                                color = if (r.status == "reserved") colors.accent_blue else colors.success,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                        if (r.status == "reserved") {
+                            Spacer(androidx.compose.ui.Modifier.height(AsterSpacing.sm))
+                            Row(horizontalArrangement = Arrangement.spacedBy(AsterSpacing.sm)) {
+                                AsterGhostButton(
+                                    label = stringResource(R.string.kids_copy_link),
+                                    onClick = {
+                                        r.claim_url?.let { url ->
+                                            copy_to_clipboard(url, context.getString(R.string.kids_link_copied))
+                                        }
+                                    },
+                                )
+                                AsterGhostButton(
+                                    label = stringResource(R.string.kids_regenerate),
+                                    onClick = {
+                                        vm.regenerate_reservation_link(r.id) { new_url ->
+                                            if (new_url != null) {
+                                                copy_to_clipboard(new_url, context.getString(R.string.kids_link_regenerated))
+                                            } else {
+                                                Toast.makeText(context, context.getString(R.string.kids_action_failed), Toast.LENGTH_SHORT).show()
+                                            }
+                                        }
+                                    },
+                                )
+                                AsterGhostButton(
+                                    label = stringResource(R.string.kids_release),
+                                    onClick = { release_target = r },
+                                )
+                            }
+                        }
+                    }
+                    if (idx < state.reserved_addresses.lastIndex) AsterDivider(modifier = androidx.compose.ui.Modifier)
+                }
+            }
+        }
+
+        v_gap(AsterSpacing.xxl)
+    }
+
+    release_target?.let { target ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { release_target = null },
+            title = { Text(stringResource(R.string.kids_release_confirm_title), color = colors.text_primary) },
+            text = {
+                Text(
+                    stringResource(R.string.kids_release_confirm_body, "${target.username}@${target.email_domain}"),
+                    color = colors.text_secondary,
+                )
+            },
+            confirmButton = {
+                AsterButton(
+                    label = stringResource(R.string.kids_release),
+                    onClick = {
+                        vm.release_reservation(target.id) { ok ->
+                            if (ok) {
+                                Toast.makeText(context, context.getString(R.string.kids_released), Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, context.getString(R.string.kids_action_failed), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        release_target = null
+                    },
+                )
+            },
+            dismissButton = {
+                AsterGhostButton(
+                    label = stringResource(R.string.cancel),
+                    onClick = { release_target = null },
+                )
+            },
+            containerColor = colors.modal_bg,
+        )
     }
 }
 

@@ -119,6 +119,7 @@ import org.astermail.android.ui.settings.detail.ApiKeysScreen
 import org.astermail.android.ui.settings.detail.ConnectionScreen
 import org.astermail.android.ui.settings.detail.DeveloperScreen
 import org.astermail.android.ui.settings.detail.FamilyScreen
+import org.astermail.android.ui.settings.detail.KidsReservedScreen
 import org.astermail.android.ui.settings.detail.FoldersScreen
 import org.astermail.android.ui.settings.detail.GhostAliasesScreen
 import org.astermail.android.ui.settings.detail.LabelsScreen
@@ -991,7 +992,10 @@ private fun AsterNavHost() {
             LanguageScreen(on_back = { back(); Unit })
         }
 composable(routes.settings_detail("family")) {
-            FamilyScreen(on_back = { back(); Unit })
+            FamilyScreen(on_back = { back(); Unit }, on_open = { id -> nav_controller.navigate(routes.settings_detail(id)) })
+        }
+        composable(routes.settings_detail("family_kids")) {
+            KidsReservedScreen(on_back = { back(); Unit })
         }
         composable(routes.settings_detail("connection")) {
             ConnectionScreen(on_back = { back(); Unit })
