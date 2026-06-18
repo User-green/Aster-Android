@@ -112,6 +112,7 @@ private fun tab_labels_computed(): List<String> = listOf(
 fun AliasesScreen(
     on_back: () -> Unit,
     on_open: (id: String) -> Unit = {},
+    open_create: Boolean = false,
 ) {
     val vm: SettingsViewModel = hiltViewModel()
     val state by vm.state.collectAsStateWithLifecycle()
@@ -141,6 +142,10 @@ fun AliasesScreen(
     LaunchedEffect(Unit) {
         vm.load_aliases()
         vm.load_domains()
+    }
+
+    LaunchedEffect(open_create) {
+        if (open_create) show_create_alias = true
     }
 
     LaunchedEffect(selected_tab) {

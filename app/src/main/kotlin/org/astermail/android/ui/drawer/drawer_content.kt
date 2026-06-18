@@ -298,7 +298,6 @@ fun DrawerContent(
 
     var show_create_folder by remember { mutableStateOf(false) }
     var show_create_label by remember { mutableStateOf(false) }
-    var show_create_alias by remember { mutableStateOf(false) }
 
     val folder_items = api_folder_items.ifEmpty { default_folder_items }
     val label_items = api_label_items.ifEmpty { default_label_items }
@@ -525,7 +524,10 @@ fun DrawerContent(
                     on_sidebar_toggle("sidebar_aliases_collapsed", !aliases_expanded)
                 },
                 show_add = true,
-                on_add = { show_create_alias = true },
+                on_add = {
+                    on_select("aliases_create")
+                    on_close()
+                },
             )
             androidx.compose.animation.AnimatedVisibility(
                 visible = aliases_expanded,
@@ -695,18 +697,6 @@ fun DrawerContent(
         )
     }
 
-    if (show_create_alias) {
-        create_item_dialog(
-            title = stringResource(R.string.create_alias),
-            placeholder = stringResource(R.string.alias_placeholder),
-            on_dismiss = { show_create_alias = false },
-            on_create = { _ ->
-                show_create_alias = false
-                on_select("aliases_settings")
-                on_close()
-            },
-        )
-    }
 }
 
 @Composable

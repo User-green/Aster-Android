@@ -873,8 +873,17 @@ private fun AsterNavHost() {
         composable(routes.settings_detail("text_size")) {
             AppearanceScreen(on_back = { back(); Unit })
         }
-        composable(routes.settings_detail("aliases")) {
-            AliasesScreen(on_back = { back(); Unit })
+        composable(
+            route = routes.settings_detail("aliases") + "?create={create}",
+            arguments = listOf(navArgument("create") {
+                type = NavType.BoolType
+                defaultValue = false
+            }),
+        ) { entry ->
+            AliasesScreen(
+                on_back = { back(); Unit },
+                open_create = entry.arguments?.getBoolean("create") ?: false,
+            )
         }
         composable(routes.settings_detail("subscriptions")) {
             MailingListsScreen(on_back = { back(); Unit })
@@ -1191,6 +1200,7 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
                         id == "subscriptions" -> { filter_kind = null; selected_folder = "subscriptions"; scope.launch { drawer_state.close() } }
                         id == "plan" -> nav_controller.navigate(routes.settings_detail("billing"))
                         id == "aliases_settings" -> nav_controller.navigate(routes.settings_detail("aliases"))
+                        id == "aliases_create" -> nav_controller.navigate(routes.settings_detail("aliases") + "?create=true")
                         id == "referral" -> nav_controller.navigate(routes.settings_detail("referral"))
                         id in mail_folder_ids -> { filter_kind = null; selected_folder = id; scope.launch { drawer_state.close() } }
                         else -> { filter_kind = null; selected_folder = id; scope.launch { drawer_state.close() } }
