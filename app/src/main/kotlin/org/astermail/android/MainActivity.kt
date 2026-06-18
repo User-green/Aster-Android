@@ -1049,6 +1049,7 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
         settings_vm.load_labels()
         settings_vm.load_tags()
         settings_vm.load_aliases()
+        settings_vm.load_custom_domain_addresses()
         settings_vm.load_preferences()
         mail_vm.load_stats()
     }
@@ -1170,6 +1171,13 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
             drawer_alias_item(
                 id = alias.id,
                 address = alias.address,
+            )
+        } + settings_state.custom_domain_addresses
+        .filter { !looks_encrypted(it.encrypted_local_part) }
+        .map { addr ->
+            drawer_alias_item(
+                id = addr.id,
+                address = addr.address,
             )
         }
 
