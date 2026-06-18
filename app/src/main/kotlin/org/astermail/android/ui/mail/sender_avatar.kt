@@ -111,7 +111,7 @@ fun SenderAvatar(
         val (bg_fb, fg_fb) = avatar_colors_for(seed_fb)
         var loaded_pp by remember(profile_picture_url) { mutableStateOf(false) }
         Box(
-            modifier = modifier.size(size).clip(CircleShape).background(if (loaded_pp) Color.White else bg_fb),
+            modifier = modifier.size(size).clip(CircleShape).background(if (loaded_pp) Color.Transparent else bg_fb),
             contentAlignment = Alignment.Center,
         ) {
             if (!loaded_pp) {
@@ -273,7 +273,7 @@ private fun AsterDomainAvatar(
     if (pic_url != null) {
         var loaded by remember(pic_url) { mutableStateOf(false) }
         Box(
-            modifier = modifier.size(size).clip(CircleShape).background(if (loaded) Color.White else Color(0xFF4F46E5)),
+            modifier = modifier.size(size).clip(CircleShape).background(if (loaded) Color.Transparent else Color(0xFF4F46E5)),
             contentAlignment = Alignment.Center,
         ) {
             if (!loaded) {

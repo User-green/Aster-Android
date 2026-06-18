@@ -124,9 +124,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
-import coil.compose.AsyncImagePainter
 import org.astermail.android.ui.mail.SenderAvatar
 import org.astermail.android.ui.mail.avatar_colors_for
 import org.astermail.android.ui.mail.initial_for
@@ -351,8 +348,12 @@ fun DrawerContent(
                 .verticalScroll(rememberScrollState())
                 .padding(top = AsterSpacing.md),
         ) {
+            val current_account = accounts.firstOrNull { it.id == current_account_id }
             workspace_header(
                 current_address = current_workspace,
+                account_email = current_account?.email ?: user_email,
+                account_name = current_account?.display_name.orEmpty(),
+                profile_picture = current_account?.profile_picture,
                 on_click = {
                     on_open_workspace_sheet()
                     show_workspace_sheet = true
@@ -993,31 +994,12 @@ private fun workspace_switcher_sheet(
                         .padding(horizontal = AsterSpacing.sm, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    if (!account.profile_picture.isNullOrBlank()) {
-                        SubcomposeAsyncImage(
-                            model = account.profile_picture,
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape),
-                        ) {
-                            when (painter.state) {
-                                is AsyncImagePainter.State.Success -> SubcomposeAsyncImageContent()
-                                else -> SenderAvatar(
-                                    email = account.email,
-                                    name = display,
-                                    size = 32.dp,
-                                )
-                            }
-                        }
-                    } else {
-                        SenderAvatar(
-                            email = account.email,
-                            name = display,
-                            size = 32.dp,
-                        )
-                    }
+                    SenderAvatar(
+                        email = account.email,
+                        name = display,
+                        size = 32.dp,
+                        profile_picture_url = account.profile_picture,
+                    )
                     Spacer(Modifier.width(AsterSpacing.md))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -1107,7 +1089,13 @@ private fun workspace_switcher_sheet(
 }
 
 @Composable
-private fun workspace_header(current_address: String, on_click: () -> Unit) {
+private fun workspace_header(
+    current_address: String,
+    account_email: String,
+    account_name: String,
+    profile_picture: String?,
+    on_click: () -> Unit,
+) {
     val colors = AsterMaterial.colors
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -1118,13 +1106,12 @@ private fun workspace_header(current_address: String, on_click: () -> Unit) {
                 .testTag("workspace_switcher"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Image(
-                painter = painterResource(R.drawable.aster_favicon),
-                contentDescription = stringResource(R.string.app_name),
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .size(28.dp)
-                    .testTag("account_avatar"),
+            SenderAvatar(
+                email = account_email,
+                name = account_name,
+                size = 28.dp,
+                profile_picture_url = profile_picture,
+                modifier = Modifier.testTag("account_avatar"),
             )
             Spacer(Modifier.width(10.dp))
             Column(modifier = Modifier.weight(1f)) {
