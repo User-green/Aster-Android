@@ -49,16 +49,28 @@ data class SetLoginAlertRequest(
 @Serializable
 data class HardwareKey(
     val id: String = "",
-    val encrypted_name: String? = null,
-    val name_nonce: String? = null,
-    val created_at: String = "",
-    val last_used_at: String? = null,
-    val display_name: String = "",
-)
+    @SerialName("name_encrypted") val name: String? = null,
+    @SerialName("type") val key_type: String = "",
+    @SerialName("registered_at") val created_at: String = "",
+    @SerialName("last_used") val last_used_at: String? = null,
+) {
+    val display_name: String get() = name?.takeIf { it.isNotBlank() } ?: ""
+}
 
 @Serializable
 data class HardwareKeysResponse(
     val keys: List<HardwareKey> = emptyList(),
+)
+
+@Serializable
+data class RenameHardwareKeyRequest(
+    val name_encrypted: String,
+)
+
+@Serializable
+data class RenameHardwareKeyResponse(
+    val success: Boolean = false,
+    val name_encrypted: String? = null,
 )
 
 @Serializable
@@ -102,6 +114,7 @@ interface SecurityApi {
     suspend fun set_login_alerts(request: SetLoginAlertRequest): LoginAlertStatus
     suspend fun list_hardware_keys(): HardwareKeysResponse
     suspend fun delete_hardware_key(key_id: String)
+    suspend fun rename_hardware_key(key_id: String, name: String): RenameHardwareKeyResponse
     suspend fun list_trusted_devices(): TrustedDevicesResponse
     suspend fun revoke_trusted_device(device_id: String)
     suspend fun revoke_all_trusted_devices()
@@ -134,6 +147,15 @@ class SecurityApiImpl(private val client: ApiClient) : SecurityApi {
             client.get_csrf()?.let { header("X-CSRF-Token", it) }
         }
         if (response.status.value !in 200..299) throw client.map_http_status(response.status.value, "")
+    }
+
+    override suspend fun rename_hardware_key(key_id: String, name: String): RenameHardwareKeyResponse {
+        val response = client.http.put("${client.base_url}$base/auth/hardware-keys/$key_id") {
+            contentType(ContentType.Application.Json)
+            client.get_csrf()?.let { header("X-CSRF-Token", it) }
+            setBody(RenameHardwareKeyRequest(name_encrypted = name))
+        }
+        return decode_or_throw(response)
     }
 
     override suspend fun list_trusted_devices(): TrustedDevicesResponse =

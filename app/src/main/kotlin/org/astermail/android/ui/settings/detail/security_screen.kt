@@ -46,6 +46,7 @@ import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.DeleteForever
+import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Devices
 import androidx.compose.material.icons.outlined.Error
 import androidx.compose.material.icons.outlined.ExpandLess
@@ -67,6 +68,7 @@ import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material.icons.outlined.VpnKey
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.SwitchDefaults
@@ -159,30 +161,28 @@ fun SecurityScreen(
     val score = if (!score_loaded) null else run {
         var s = 0
         if (sec?.totp_enabled == true) s++
-        if (state.login_alerts_enabled == true) s++
+        if (hardware_keys_count > 0) s++
         if (recovery_email_verified) s++
+        if (state.login_alerts_enabled == true) s++
         if (prefs?.block_tracking_pixels == true) s++
         if (prefs?.block_external_images == true) s++
-        if (prefs?.block_tracking_links == true) s++
-        if (prefs?.warn_suspicious_links == true) s++
         if (prefs?.strip_exif == true) s++
         if (prefs?.send_read_receipts == false) s++
-        if (hardware_keys_count > 0) s++
         s
     }
 
     val score_label = when (score) {
         null -> "…"
-        in 0..3 -> "Weak"
-        in 4..6 -> "Fair"
-        in 7..8 -> "Partial"
+        in 0..2 -> "Weak"
+        in 3..5 -> "Fair"
+        in 6..7 -> "Partial"
         else -> "Strong"
     }
     val score_color = when (score) {
         null -> colors.text_muted
-        in 0..3 -> colors.danger
-        in 4..6 -> colors.warning
-        in 7..8 -> Color(0xFFD97706)
+        in 0..2 -> colors.danger
+        in 3..5 -> colors.warning
+        in 6..7 -> Color(0xFFD97706)
         else -> colors.success
     }
 
@@ -242,7 +242,7 @@ fun SecurityScreen(
                             )
                         } else {
                             Text(
-                                text = "$score / 10",
+                                text = "$score / 8",
                                 color = score_color,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
@@ -282,7 +282,7 @@ fun SecurityScreen(
                     if (score != null) {
                         Box(
                             modifier = Modifier
-                                .fillMaxWidth(fraction = (score / 10f).coerceIn(0f, 1f))
+                                .fillMaxWidth(fraction = (score / 8f).coerceIn(0f, 1f))
                                 .height(6.dp)
                                 .clip(CircleShape)
                                 .background(score_color),
@@ -296,15 +296,13 @@ fun SecurityScreen(
                 ) {
                     Column(modifier = Modifier.padding(top = AsterSpacing.md)) {
                         score_checklist_row("Two-factor authentication", sec?.totp_enabled == true, colors) { on_open("two_factor") }
-                        score_checklist_row("Login alerts", state.login_alerts_enabled == true, colors) { vm.set_login_alerts(state.login_alerts_enabled != true) }
-                        score_checklist_row("Recovery email verified", recovery_email_verified, colors) { on_open("recovery_email") }
-                        score_checklist_row("Block tracking pixels", prefs?.block_tracking_pixels == true, colors) { toggle { it.copy(block_tracking_pixels = it.block_tracking_pixels != true) } }
-                        score_checklist_row("Block remote images", prefs?.block_external_images == true, colors) { toggle { it.copy(block_external_images = it.block_external_images != true) } }
-                        score_checklist_row("Block tracking links", prefs?.block_tracking_links == true, colors) { toggle { it.copy(block_tracking_links = it.block_tracking_links != true) } }
-                        score_checklist_row("Warn on suspicious links", prefs?.warn_suspicious_links == true, colors) { toggle { it.copy(warn_suspicious_links = it.warn_suspicious_links != true) } }
-                        score_checklist_row("Strip EXIF on compose", prefs?.strip_exif == true, colors) { toggle { it.copy(strip_exif = it.strip_exif != true) } }
-                        score_checklist_row("Read receipts off", prefs?.send_read_receipts == false, colors) { toggle { it.copy(send_read_receipts = it.send_read_receipts != false) } }
                         score_checklist_row("Passkey registered", hardware_keys_count > 0, colors) { on_open("encryption") }
+                        score_checklist_row("Verified recovery email", recovery_email_verified, colors) { on_open("recovery_email") }
+                        score_checklist_row("Login alerts", state.login_alerts_enabled == true, colors) { vm.set_login_alerts(state.login_alerts_enabled != true) }
+                        score_checklist_row("Block Spy Pixels", prefs?.block_tracking_pixels == true, colors) { toggle { it.copy(block_tracking_pixels = it.block_tracking_pixels != true) } }
+                        score_checklist_row("Block Remote Images", prefs?.block_external_images == true, colors) { toggle { it.copy(block_external_images = it.block_external_images != true) } }
+                        score_checklist_row("Strip Image Metadata", prefs?.strip_exif == true, colors) { toggle { it.copy(strip_exif = it.strip_exif != true) } }
+                        score_checklist_row("Read receipts off", prefs?.send_read_receipts == false, colors) { toggle { it.copy(send_read_receipts = it.send_read_receipts != false) } }
                     }
                 }
             }
@@ -375,7 +373,12 @@ fun SecurityScreen(
                     Column {
                         state.hardware_keys.forEach { key ->
                             AsterDivider()
-                            hardware_key_row(key = key, on_delete = { vm.delete_hardware_key(key.id) }, colors = colors)
+                            hardware_key_row(
+                                key = key,
+                                on_delete = { vm.delete_hardware_key(key.id) },
+                                on_rename = { new_name -> vm.rename_hardware_key(key.id, new_name) },
+                                colors = colors,
+                            )
                         }
                     }
                 }
@@ -887,8 +890,12 @@ private fun score_checklist_row(
 private fun hardware_key_row(
     key: HardwareKey,
     on_delete: () -> Unit,
+    on_rename: (String) -> Unit,
     colors: org.astermail.android.design.AsterSemanticColors,
 ) {
+    var show_rename by remember(key.id) { mutableStateOf(false) }
+    var rename_text by remember(key.id) { mutableStateOf(key.display_name) }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -916,10 +923,42 @@ private fun hardware_key_row(
             )
         }
         AsterIconButton(
+            icon = Icons.Outlined.Edit,
+            content_description = stringResource(R.string.hardware_key_rename),
+            onClick = {
+                rename_text = key.display_name
+                show_rename = true
+            },
+            tint = colors.text_secondary,
+        )
+        AsterIconButton(
             icon = Icons.Outlined.Delete,
             content_description = stringResource(R.string.hardware_key_remove),
             onClick = on_delete,
             tint = colors.danger,
+        )
+    }
+
+    if (show_rename) {
+        AsterAlertDialog(
+            on_dismiss = { show_rename = false },
+            title = stringResource(R.string.hardware_key_rename),
+            confirm_label = stringResource(R.string.save),
+            cancel_label = stringResource(R.string.cancel),
+            confirm_enabled = rename_text.isNotBlank(),
+            on_confirm = {
+                show_rename = false
+                on_rename(rename_text.trim())
+            },
+            extra_content = {
+                OutlinedTextField(
+                    value = rename_text,
+                    onValueChange = { if (it.length <= 128) rename_text = it },
+                    singleLine = true,
+                    placeholder = { Text(stringResource(R.string.hardware_key_rename_placeholder)) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
         )
     }
 }
