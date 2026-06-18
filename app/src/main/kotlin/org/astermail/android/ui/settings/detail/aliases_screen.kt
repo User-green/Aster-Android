@@ -142,6 +142,7 @@ fun AliasesScreen(
     LaunchedEffect(Unit) {
         vm.load_aliases()
         vm.load_domains()
+        vm.load_custom_domain_addresses()
     }
 
     LaunchedEffect(open_create) {
@@ -355,6 +356,44 @@ private fun aliases_tab(
                     }
                 }
                 if (idx < state.aliases.lastIndex) AsterDivider(modifier = Modifier)
+            }
+        }
+    }
+
+    if (state.custom_domain_addresses.isNotEmpty()) {
+        v_gap(AsterSpacing.md)
+        Text(
+            text = stringResource(R.string.custom_domains),
+            color = colors.text_tertiary,
+            fontSize = 13.sp,
+        )
+        v_gap(AsterSpacing.sm)
+        AsterCard(modifier = Modifier.fillMaxWidth()) {
+            state.custom_domain_addresses.forEachIndexed { idx, addr ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.sm),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = addr.address,
+                        color = if (addr.decryption_failed) colors.text_muted else colors.text_primary,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    AsterIconButton(
+                        icon = Icons.Outlined.ContentCopy,
+                        content_description = "Copy",
+                        onClick = {
+                            val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText("alias", addr.address))
+                            android.widget.Toast.makeText(context, "Copied", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                    )
+                }
+                if (idx < state.custom_domain_addresses.lastIndex) AsterDivider(modifier = Modifier)
             }
         }
     }
