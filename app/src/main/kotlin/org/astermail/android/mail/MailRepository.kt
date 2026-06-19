@@ -455,7 +455,7 @@ class MailRepository @Inject constructor(
                     "is_spam" to false,
                 ),
             )
-            mail_api.patch_metadata(item_id, request)
+            runCatching { mail_api.patch_metadata(item_id, request) }
         }
         Unit
     }
@@ -473,8 +473,17 @@ class MailRepository @Inject constructor(
         mail_api.bulk_action(BulkScopeRequest(action = "unmark_spam", ids = item_ids))
     }
 
-    suspend fun unarchive(item_ids: List<String>): Result<BulkScopeResponse> = runCatching {
-        mail_api.bulk_action(BulkScopeRequest(action = "unarchive", ids = item_ids))
+    suspend fun unarchive(item_ids: List<String>, raw_items: List<MailItem?> = emptyList()): Result<BulkScopeResponse> = runCatching {
+        val response = mail_api.bulk_action(BulkScopeRequest(action = "unarchive", ids = item_ids))
+        item_ids.forEachIndexed { index, item_id ->
+            val raw_item = raw_items.getOrNull(index)
+            val request = build_metadata_patch(
+                raw_item,
+                mapOf("is_archived" to false),
+            )
+            runCatching { mail_api.patch_metadata(item_id, request) }
+        }
+        response
     }
 
     suspend fun restore_trash(item_ids: List<String>): Result<BulkScopeResponse> = runCatching {

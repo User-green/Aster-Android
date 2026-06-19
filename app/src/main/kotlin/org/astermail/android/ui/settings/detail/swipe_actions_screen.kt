@@ -49,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -84,11 +85,11 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
 
     LaunchedEffect(Unit) { vm.load_preferences() }
 
-    val prefs_seeded = prefs != null
-    var swipe_right by remember(prefs_seeded) { mutableStateOf(prefs?.swipe_right_action ?: "archive") }
-    var swipe_left by remember(prefs_seeded) { mutableStateOf(prefs?.swipe_left_action ?: "trash") }
+    var swipe_right by remember { mutableStateOf("archive") }
+    var swipe_left by remember { mutableStateOf("trash") }
     var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded by remember { mutableStateOf(false) }
+    val current_prefs by rememberUpdatedState(prefs)
 
     LaunchedEffect(prefs) {
         if (prefs != null && !prefs_loaded) {
@@ -99,7 +100,7 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
     }
 
     fun save() {
-        val base = prefs ?: return
+        val base = current_prefs ?: return
         vm.save_preferences(
             base.copy(
                 swipe_right_action = swipe_right,
@@ -110,14 +111,14 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
 
     LaunchedEffect(save_trigger) {
         if (save_trigger == 0) return@LaunchedEffect
-        if (!prefs_loaded || prefs == null) return@LaunchedEffect
+        if (!prefs_loaded || current_prefs == null) return@LaunchedEffect
         delay(500)
         save()
     }
 
     androidx.compose.runtime.DisposableEffect(Unit) {
         onDispose {
-            if (save_trigger > 0 && prefs != null && prefs_loaded) {
+            if (save_trigger > 0 && current_prefs != null && prefs_loaded) {
                 save()
             }
         }
@@ -157,7 +158,7 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
                     swipe_action_option(
                         option = option,
                         selected = swipe_right == option.id,
-                        on_click = { swipe_right = option.id; save_trigger++ },
+                        on_click = { prefs_loaded = true; swipe_right = option.id; save_trigger++ },
                     )
                     if (i < action_options.lastIndex) AsterDivider(modifier = Modifier)
                 }
@@ -175,7 +176,7 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
                     swipe_action_option(
                         option = option,
                         selected = swipe_left == option.id,
-                        on_click = { swipe_left = option.id; save_trigger++ },
+                        on_click = { prefs_loaded = true; swipe_left = option.id; save_trigger++ },
                     )
                     if (i < action_options.lastIndex) AsterDivider(modifier = Modifier)
                 }

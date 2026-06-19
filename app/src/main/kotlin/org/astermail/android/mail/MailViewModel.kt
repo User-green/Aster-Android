@@ -1114,13 +1114,15 @@ class MailViewModel @Inject constructor(
         if (item_ids.isEmpty()) return
         val previous = _inbox_state.value.items
         val removed_items = previous.filter { it.id in item_ids }
+        val raw_items = lookup_raw_items(item_ids)
         _inbox_state.value = _inbox_state.value.copy(
             items = previous.filter { it.id !in item_ids },
         )
         invalidate_caches(listOf("inbox", "archive"))
         viewModelScope.launch {
-            repository.unarchive(item_ids).fold(
+            repository.unarchive(item_ids, raw_items).fold(
                 onSuccess = {
+                    runCatching { search_index_manager.mark_unarchived(item_ids) }
                     emit_toast_undo(
                         context.getString(R.string.moved_to_inbox),
                         context.getString(R.string.undo),

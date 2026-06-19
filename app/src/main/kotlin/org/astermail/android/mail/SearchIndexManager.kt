@@ -70,8 +70,12 @@ class SearchIndexManager @Inject constructor(
 
     fun on_items_loaded(items: List<InboxItem>) {
         val my_epoch = epoch.get()
+        val cacheable = items.filter {
+            val t = it.raw_item.item_type
+            t == null || t == "received"
+        }
         scope.launch {
-            cache_items(items, my_epoch)
+            cache_items(cacheable, my_epoch)
             if (epoch.get() == my_epoch && !_index_ready.value) {
                 _index_ready.value = dao.count() > 0
             }
@@ -87,6 +91,8 @@ class SearchIndexManager @Inject constructor(
     suspend fun mark_trashed(ids: List<String>) = dao.mark_trashed(ids)
 
     suspend fun mark_archived(ids: List<String>) = dao.mark_archived(ids)
+
+    suspend fun mark_unarchived(ids: List<String>) = dao.mark_unarchived(ids)
 
     suspend fun mark_spam(ids: List<String>) = dao.mark_spam(ids)
 
@@ -113,7 +119,7 @@ class SearchIndexManager @Inject constructor(
             var cursor: String? = null
             val max_pages = 20
             repeat(max_pages) { page ->
-                val response = mail_api.list_messages(limit = 50, cursor = cursor)
+                val response = mail_api.list_messages(limit = 50, cursor = cursor, item_type = "received")
                 val new_items = response.items.filter { it.id !in existing_ids }
                 if (new_items.isNotEmpty()) {
                     val decrypted = repository.decrypt_items_for_cache(new_items)
