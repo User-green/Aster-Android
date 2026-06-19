@@ -81,14 +81,14 @@ interface TokenProvider {
 }
 
 fun build_user_agent(): String {
-    val manufacturer = Build.MANUFACTURER.replaceFirstChar { it.uppercase() }
-    val model = Build.MODEL
+    val manufacturer = (Build.MANUFACTURER ?: "unknown").replaceFirstChar { it.uppercase() }
+    val model = Build.MODEL ?: "device"
     val device_name = if (model.startsWith(manufacturer, ignoreCase = true)) {
         model
     } else {
         "$manufacturer $model"
     }
-    val android_version = Build.VERSION.RELEASE
+    val android_version = Build.VERSION.RELEASE ?: "0"
     val sdk = Build.VERSION.SDK_INT
     return "AsterMail-Android/${BuildConfig.VERSION_NAME} (Android $android_version; SDK $sdk; $device_name)"
 }
@@ -101,6 +101,7 @@ class ApiClient(
     private val on_csrf_changed: (String?) -> Unit = {},
     initial_csrf: String? = null,
     private val csrf_refresher: suspend () -> String? = { null },
+    private val allow_cleartext_for_test: Boolean = false,
 ) {
     val json: Json = Json {
         ignoreUnknownKeys = true
@@ -122,7 +123,12 @@ class ApiClient(
     val http: HttpClient = HttpClient(OkHttp) {
         engine {
             config {
-                connectionSpecs(listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS))
+                val specs = if (allow_cleartext_for_test) {
+                    listOf(ConnectionSpec.CLEARTEXT, ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
+                } else {
+                    listOf(ConnectionSpec.MODERN_TLS, ConnectionSpec.COMPATIBLE_TLS)
+                }
+                connectionSpecs(specs)
             }
             addInterceptor(okhttp3.Interceptor { chain ->
                 val original = chain.request()
@@ -237,8 +243,17 @@ class ApiClient(
             if (fresh.isNullOrEmpty()) {
                 saved_call
             } else {
+                reattach_fresh_bearer(request)
                 execute(request)
             }
+        }
+    }
+
+    private suspend fun reattach_fresh_bearer(request: HttpRequestBuilder) {
+        runCatching {
+            val tokens = token_provider.load() ?: return
+            request.headers.remove(HttpHeaders.Authorization)
+            request.headers.append(HttpHeaders.Authorization, "Bearer ${tokens.accessToken}")
         }
     }
 

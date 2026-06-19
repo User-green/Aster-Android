@@ -87,6 +87,7 @@ class SettingsViewModelTest {
     private lateinit var user_api: UserApi
     private lateinit var settings_api: SettingsApi
     private lateinit var labels_api: LabelsApi
+    private lateinit var family_api: org.astermail.android.api.family.FamilyApi
     private lateinit var tags_api: TagsApi
     private lateinit var preferences_api: PreferencesApi
     private lateinit var signatures_api: org.astermail.android.api.signatures.SignaturesApi
@@ -126,6 +127,7 @@ class SettingsViewModelTest {
         user_api = mockk(relaxed = true)
         settings_api = mockk(relaxed = true)
         labels_api = mockk(relaxed = true)
+        family_api = mockk(relaxed = true)
         tags_api = mockk(relaxed = true)
         preferences_api = mockk(relaxed = true)
         signatures_api = mockk(relaxed = true)
@@ -148,6 +150,7 @@ class SettingsViewModelTest {
             user_api = user_api,
             settings_api = settings_api,
             labels_api = labels_api,
+            family_api = family_api,
             tags_api = tags_api,
             preferences_api = preferences_api,
             signatures_api = signatures_api,

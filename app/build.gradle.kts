@@ -29,8 +29,8 @@ android {
         applicationId = "org.astermail.android"
         minSdk = 26
         targetSdk = 35
-        versionCode = 84
-        versionName = "0.6.76"
+        versionCode = 87
+        versionName = "0.6.78"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
@@ -87,6 +87,10 @@ android {
         resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
         resources.excludes += "META-INF/versions/9/OSGI-INF/MANIFEST.MF"
         resources.excludes += "META-INF/versions/**/OSGI-INF/MANIFEST.MF"
+    }
+
+    testOptions {
+        unitTests.isReturnDefaultValues = true
     }
 }
 
@@ -156,6 +160,7 @@ dependencies {
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.turbine)
     testImplementation(libs.json)
+    testImplementation(libs.okhttp.mockwebserver)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.compose.bom))
