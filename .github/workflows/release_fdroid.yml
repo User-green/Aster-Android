@@ -59,6 +59,7 @@ jobs:
             --ks-key-alias aster-mail \
             --ks-pass env:KEYSTORE_PASSWORD \
             --key-pass env:KEY_PASSWORD \
+            --alignment-preserved \
             --out "Aster-Mail-fdroid-$version.apk" \
             app/build/outputs/apk/fdroid/release/app-fdroid-release-unsigned.apk
           "$apksigner" verify --print-certs "Aster-Mail-fdroid-$version.apk"
