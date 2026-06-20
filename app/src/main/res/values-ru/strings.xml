@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">Пригласить</string>
     <string name="credit_task_ios_title">Скачать приложение Aster для iOS</string>
     <string name="credit_task_ios_hint_coming">Скоро</string>
-    <string name="credit_task_android_title">Скачать приложение Aster для Android</string>
-    <string name="credit_task_android_hint">Вы получите $10 после входа в аккаунт.</string>
-    <string name="credit_task_desktop_title">Скачать приложение Aster для компьютера</string>
-    <string name="credit_task_desktop_hint">Вы получите $10 после входа в аккаунт.</string>
-    <string name="credit_task_download_cta">Скачать</string>
     <string name="credit_task_earned">Получено</string>
     <string name="stats">Статистика</string>
     <string name="total_referrals">Всего приглашений</string>

@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">Davet et</string>
     <string name="credit_task_ios_title">iOS için Aster uygulamasını indirin</string>
     <string name="credit_task_ios_hint_coming">Yakında</string>
-    <string name="credit_task_android_title">Android için Aster uygulamasını indirin</string>
-    <string name="credit_task_android_hint">Oturum açtıktan sonra $10 alacaksınız.</string>
-    <string name="credit_task_desktop_title">Masaüstü için Aster uygulamasını indirin</string>
-    <string name="credit_task_desktop_hint">Oturum açtıktan sonra $10 alacaksınız.</string>
-    <string name="credit_task_download_cta">İndir</string>
     <string name="credit_task_earned">Kazanıldı</string>
     <string name="stats">İstatistikler</string>
     <string name="total_referrals">Toplam Tavsiyeler</string>

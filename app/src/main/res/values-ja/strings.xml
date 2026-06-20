@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">招待</string>
     <string name="credit_task_ios_title">iOS版Asterアプリをダウンロード</string>
     <string name="credit_task_ios_hint_coming">近日公開</string>
-    <string name="credit_task_android_title">Android版Asterアプリをダウンロード</string>
-    <string name="credit_task_android_hint">サインイン後に$10が付与されます。</string>
-    <string name="credit_task_desktop_title">デスクトップ版Asterアプリをダウンロード</string>
-    <string name="credit_task_desktop_hint">サインイン後に$10が付与されます。</string>
-    <string name="credit_task_download_cta">ダウンロード</string>
     <string name="credit_task_earned">獲得済み</string>
     <string name="stats">統計</string>
     <string name="total_referrals">総紹介数</string>

@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">Uitnodigen</string>
     <string name="credit_task_ios_title">Download de Aster-app voor iOS</string>
     <string name="credit_task_ios_hint_coming">Binnenkort beschikbaar</string>
-    <string name="credit_task_android_title">Download de Aster-app voor Android</string>
-    <string name="credit_task_android_hint">Je ontvangt $10 nadat je bent ingelogd.</string>
-    <string name="credit_task_desktop_title">Download de Aster-app voor desktop</string>
-    <string name="credit_task_desktop_hint">Je ontvangt $10 nadat je bent ingelogd.</string>
-    <string name="credit_task_download_cta">Downloaden</string>
     <string name="credit_task_earned">Verdiend</string>
     <string name="stats">Statistieken</string>
     <string name="total_referrals">Totale verwijzingen</string>

@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">دعوة</string>
     <string name="credit_task_ios_title">حمّل تطبيق Aster لنظام iOS</string>
     <string name="credit_task_ios_hint_coming">قريباً</string>
-    <string name="credit_task_android_title">حمّل تطبيق Aster لنظام Android</string>
-    <string name="credit_task_android_hint">ستحصل على $10 بعد تسجيل الدخول.</string>
-    <string name="credit_task_desktop_title">حمّل تطبيق Aster لسطح المكتب</string>
-    <string name="credit_task_desktop_hint">ستحصل على $10 بعد تسجيل الدخول.</string>
-    <string name="credit_task_download_cta">تحميل</string>
     <string name="credit_task_earned">تم الكسب</string>
     <string name="stats">الإحصائيات</string>
     <string name="total_referrals">إجمالي الإحالات</string>

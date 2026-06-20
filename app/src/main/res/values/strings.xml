@@ -966,11 +966,6 @@
     <string name="credit_task_refer_cta">Invite</string>
     <string name="credit_task_ios_title">Download the Aster app for iOS</string>
     <string name="credit_task_ios_hint_coming">Coming soon</string>
-    <string name="credit_task_android_title">Download the Aster app for Android</string>
-    <string name="credit_task_android_hint">You will receive $10 after signing in.</string>
-    <string name="credit_task_desktop_title">Download the Aster app for Desktop</string>
-    <string name="credit_task_desktop_hint">You will receive $10 after signing in.</string>
-    <string name="credit_task_download_cta">Download</string>
     <string name="credit_task_earned">Earned</string>
     <string name="reward_recurring">You also get 5% of every payment they make for as long as they\'re subscribed.</string>
     <string name="share_invite_link">Share invite link</string>

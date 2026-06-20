@@ -699,11 +699,6 @@
     <string name="credit_task_refer_cta">Invitar</string>
     <string name="credit_task_ios_title">Descarga la app de Aster para iOS</string>
     <string name="credit_task_ios_hint_coming">Próximamente</string>
-    <string name="credit_task_android_title">Descarga la app de Aster para Android</string>
-    <string name="credit_task_android_hint">Recibirás $5 después de iniciar sesión.</string>
-    <string name="credit_task_desktop_title">Descarga la app de Aster para escritorio</string>
-    <string name="credit_task_desktop_hint">Recibirás $5 después de iniciar sesión.</string>
-    <string name="credit_task_download_cta">Descargar</string>
     <string name="credit_task_earned">Ganado</string>
     <string name="stats">Estadísticas</string>
     <string name="total_referrals">Total de referidos</string>

@@ -698,11 +698,6 @@
     <string name="credit_task_refer_cta">邀请</string>
     <string name="credit_task_ios_title">下载 iOS 版 Aster 应用</string>
     <string name="credit_task_ios_hint_coming">即将推出</string>
-    <string name="credit_task_android_title">下载 Android 版 Aster 应用</string>
-    <string name="credit_task_android_hint">登录后您将获得 $10。</string>
-    <string name="credit_task_desktop_title">下载桌面版 Aster 应用</string>
-    <string name="credit_task_desktop_hint">登录后您将获得 $10。</string>
-    <string name="credit_task_download_cta">下载</string>
     <string name="credit_task_earned">已获得</string>
     <string name="stats">统计</string>
     <string name="total_referrals">总推荐数</string>

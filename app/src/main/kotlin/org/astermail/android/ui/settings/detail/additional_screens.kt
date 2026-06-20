@@ -395,12 +395,9 @@ fun ReferralScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
     val link = referral?.referral_link ?: ""
 
     val link_copied_text = stringResource(R.string.link_copied)
-    val download_url = "https://astermail.org/download"
 
     val refer_earned_cents = (referral?.credits_earned_cents ?: 0L) +
         (referral?.commission_earned_cents ?: 0L)
-    val android_earned_cents = referral?.earned_install_android_cents ?: 0L
-    val desktop_earned_cents = referral?.earned_install_desktop_cents ?: 0L
 
     detail_scaffold(title = stringResource(R.string.credits_title), on_back = on_back) {
         Column(Modifier.padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.md)) {
@@ -440,26 +437,6 @@ fun ReferralScreen(on_back: () -> Unit, on_open: (id: String) -> Unit = {}) {
                             cm.setPrimaryClip(ClipData.newPlainText(context.getString(R.string.clipboard_label_referral), link))
                             Toast.makeText(context, link_copied_text, Toast.LENGTH_SHORT).show()
                         }
-                    },
-                )
-                credit_task_row(
-                    amount_cents = 500,
-                    title = stringResource(R.string.credit_task_android_title),
-                    hint = stringResource(R.string.credit_task_android_hint),
-                    earned_cents = android_earned_cents,
-                    cta_label = stringResource(R.string.credit_task_download_cta),
-                    on_action = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download_url)))
-                    },
-                )
-                credit_task_row(
-                    amount_cents = 500,
-                    title = stringResource(R.string.credit_task_desktop_title),
-                    hint = stringResource(R.string.credit_task_desktop_hint),
-                    earned_cents = desktop_earned_cents,
-                    cta_label = stringResource(R.string.credit_task_download_cta),
-                    on_action = {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(download_url)))
                     },
                 )
             }
