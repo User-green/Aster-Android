@@ -104,13 +104,21 @@ public CI):
 
 1. Run the `release_fdroid` workflow on the tag; download the `fdroid-unsigned`
    artifact (`app-fdroid-release-unsigned.apk`).
-2. On the release machine, sign it locally:
+2. On the release machine, sign it locally. Do **not** run `zipalign`: the
+   unsigned APK is already aligned by AGP exactly as F-Droid's buildserver
+   produces it, and `apksigner` from build-tools 35+ re-aligns on its own by
+   default (rewriting the padding into `0xd935` alignment extra fields), which
+   changes the bytes covered by the v2/v3 signature and breaks the reproducible
+   compare. Pass `--alignment-preserved` so the AGP layout is kept and the
+   signature transplant matches the from-source build:
    ```bash
-   zipalign -p -f 4 app-fdroid-release-unsigned.apk aligned.apk
    apksigner sign --ks keystore/aster-mail-upload-v3.jks \
-     --ks-key-alias aster-mail --out Aster-Mail-fdroid-<version>.apk aligned.apk
+     --ks-key-alias aster-mail --alignment-preserved \
+     --out Aster-Mail-fdroid-<version>.apk app-fdroid-release-unsigned.apk
    apksigner verify --print-certs Aster-Mail-fdroid-<version>.apk
    ```
+   `--alignment-preserved` requires build-tools >= 35; build-tools 34's
+   `apksigner` never re-aligns, so it also works there without the flag.
    The cert SHA-256 must be `88b0a8a6...0977` (matches `AllowedAPKSigningKeys`).
 3. Attach `Aster-Mail-fdroid-<version>.apk` to the GitHub Release for that tag.
 
