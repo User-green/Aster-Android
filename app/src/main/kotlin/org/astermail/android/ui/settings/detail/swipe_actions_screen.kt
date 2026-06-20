@@ -46,10 +46,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -59,10 +57,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import kotlinx.coroutines.delay
 import androidx.compose.ui.res.stringResource
 import org.astermail.android.R
-import org.astermail.android.api.preferences.UserPreferences
 import org.astermail.android.design.AsterMaterial
 import org.astermail.android.design.AsterSpacing
 import org.astermail.android.design.components.AsterCard
@@ -87,40 +83,13 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
 
     var swipe_right by remember { mutableStateOf("archive") }
     var swipe_left by remember { mutableStateOf("trash") }
-    var save_trigger by remember { mutableIntStateOf(0) }
     var prefs_loaded by remember { mutableStateOf(false) }
-    val current_prefs by rememberUpdatedState(prefs)
 
     LaunchedEffect(prefs) {
         if (prefs != null && !prefs_loaded) {
             prefs_loaded = true
             swipe_right = prefs.swipe_right_action
             swipe_left = prefs.swipe_left_action
-        }
-    }
-
-    fun save() {
-        val base = current_prefs ?: return
-        vm.save_preferences(
-            base.copy(
-                swipe_right_action = swipe_right,
-                swipe_left_action = swipe_left,
-            ),
-        )
-    }
-
-    LaunchedEffect(save_trigger) {
-        if (save_trigger == 0) return@LaunchedEffect
-        if (!prefs_loaded || current_prefs == null) return@LaunchedEffect
-        delay(500)
-        save()
-    }
-
-    androidx.compose.runtime.DisposableEffect(Unit) {
-        onDispose {
-            if (save_trigger > 0 && current_prefs != null && prefs_loaded) {
-                save()
-            }
         }
     }
 
@@ -158,7 +127,13 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
                     swipe_action_option(
                         option = option,
                         selected = swipe_right == option.id,
-                        on_click = { prefs_loaded = true; swipe_right = option.id; save_trigger++ },
+                        on_click = {
+                            prefs_loaded = true
+                            swipe_right = option.id
+                            prefs?.let { base ->
+                                vm.save_preferences(base.copy(swipe_right_action = option.id, swipe_left_action = swipe_left))
+                            }
+                        },
                     )
                     if (i < action_options.lastIndex) AsterDivider(modifier = Modifier)
                 }
@@ -176,7 +151,13 @@ fun SwipeActionsScreen(on_back: () -> Unit) {
                     swipe_action_option(
                         option = option,
                         selected = swipe_left == option.id,
-                        on_click = { prefs_loaded = true; swipe_left = option.id; save_trigger++ },
+                        on_click = {
+                            prefs_loaded = true
+                            swipe_left = option.id
+                            prefs?.let { base ->
+                                vm.save_preferences(base.copy(swipe_right_action = swipe_right, swipe_left_action = option.id))
+                            }
+                        },
                     )
                     if (i < action_options.lastIndex) AsterDivider(modifier = Modifier)
                 }

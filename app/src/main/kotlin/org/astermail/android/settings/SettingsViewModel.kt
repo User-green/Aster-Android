@@ -209,6 +209,7 @@ class SettingsViewModel @Inject constructor(
     @Volatile private var default_signature_id: String? = null
     @Volatile private var default_signature_is_html: Boolean = false
     private var load_preferences_job: kotlinx.coroutines.Job? = null
+    private var save_preferences_job: kotlinx.coroutines.Job? = null
 
     fun load_profile() {
         viewModelScope.launch {
@@ -1728,8 +1729,9 @@ class SettingsViewModel @Inject constructor(
 
     fun save_preferences(prefs: UserPreferences) {
         load_preferences_job?.cancel()
-        viewModelScope.launch {
-            _state.value = _state.value.copy(save_status = SaveStatus.SAVING)
+        save_preferences_job?.cancel()
+        _state.value = _state.value.copy(preferences = prefs, save_status = SaveStatus.SAVING)
+        save_preferences_job = viewModelScope.launch {
             try {
                 val identity_key = session_key_store.get_identity_key()
                 if (!identity_key.isNullOrBlank()) {
@@ -1738,10 +1740,7 @@ class SettingsViewModel @Inject constructor(
                 } else {
                     preferences_api.save_preferences(prefs)
                 }
-                _state.value = _state.value.copy(
-                    preferences = prefs,
-                    save_status = SaveStatus.SAVED,
-                )
+                _state.value = _state.value.copy(save_status = SaveStatus.SAVED)
             } catch (t: Throwable) {
                 _state.value = _state.value.copy(
                     save_status = SaveStatus.ERROR,
