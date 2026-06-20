@@ -46,6 +46,7 @@ object UnifiedPushState {
     private const val PREFS_NAME = "aster_unifiedpush"
     private const val KEY_ENDPOINT = "endpoint_url"
     private const val KEY_REGISTERED_ENDPOINT = "registered_endpoint_url"
+    private const val KEY_REGISTERED_P256DH = "registered_p256dh"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Serializable
@@ -83,6 +84,7 @@ object UnifiedPushState {
             .edit()
             .remove(KEY_ENDPOINT)
             .remove(KEY_REGISTERED_ENDPOINT)
+            .remove(KEY_REGISTERED_P256DH)
             .apply()
     }
 
@@ -130,7 +132,8 @@ object UnifiedPushState {
         auth: String,
     ) {
         val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-        if (prefs.getString(KEY_REGISTERED_ENDPOINT, null) == endpoint_url) return
+        if (prefs.getString(KEY_REGISTERED_ENDPOINT, null) == endpoint_url &&
+            prefs.getString(KEY_REGISTERED_P256DH, null) == p256dh) return
         scope.launch {
             runCatching {
                 val client = EntryPointAccessors.fromApplication(
@@ -147,7 +150,10 @@ object UnifiedPushState {
                     contentType(ContentType.Application.Json)
                     setBody(request)
                 }.body<Map<String, Any?>>()
-                prefs.edit().putString(KEY_REGISTERED_ENDPOINT, endpoint_url).apply()
+                prefs.edit()
+                    .putString(KEY_REGISTERED_ENDPOINT, endpoint_url)
+                    .putString(KEY_REGISTERED_P256DH, p256dh)
+                    .apply()
             }
         }
     }
