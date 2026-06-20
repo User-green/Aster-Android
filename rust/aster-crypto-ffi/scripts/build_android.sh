@@ -28,6 +28,10 @@ fi
 
 mkdir -p "$android_jni_dir"
 
+cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+rust_sysroot="$(rustc --print sysroot)"
+export RUSTFLAGS="--remap-path-prefix=${cargo_home}=/cargo --remap-path-prefix=${repo_root}=/build --remap-path-prefix=${rust_sysroot}=/rust ${RUSTFLAGS:-}"
+
 cargo ndk \
     -t arm64-v8a \
     -t armeabi-v7a \
