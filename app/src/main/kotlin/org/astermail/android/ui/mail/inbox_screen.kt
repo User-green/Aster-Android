@@ -154,6 +154,7 @@ fun InboxScreen(
     on_open_upgrade: () -> Unit = {},
     current_folder: String = "inbox",
     display_title: String? = null,
+    inbox_category: String = "primary",
     on_folder_change: (String) -> Unit = {},
 ) {
     val colors = AsterMaterial.colors
@@ -335,9 +336,20 @@ fun InboxScreen(
 
     val sticky_participants = remember(current_folder) { mutableMapOf<String, List<Pair<String, String>>>() }
     val cached_participants by mail_vm.thread_participants.collectAsStateWithLifecycle()
+
+    val categories_enabled = current_folder == "inbox" &&
+        (settings_state.preferences?.inbox_categories_enabled ?: true)
+    val active_category = inbox_category
     val emails_fingerprint = emails.size to (emails.firstOrNull()?.id to emails.lastOrNull()?.id)
-    val threads = androidx.compose.runtime.remember(emails_fingerprint, sort_mode, cached_participants) {
-        val grouped_raw = group_by_thread(emails)
+    val category_source = remember(emails_fingerprint, categories_enabled, active_category) {
+        if (categories_enabled) {
+            emails.filter { org.astermail.android.mail.category_for_tab(it.category) == active_category }
+        } else {
+            emails.toList()
+        }
+    }
+    val threads = androidx.compose.runtime.remember(emails_fingerprint, categories_enabled, active_category, sort_mode, cached_participants) {
+        val grouped_raw = group_by_thread(category_source)
         val live_ids = grouped_raw.map { it.thread_id }.toHashSet()
         sticky_participants.keys.retainAll(live_ids)
         val grouped = grouped_raw.map { row ->
@@ -409,6 +421,23 @@ fun InboxScreen(
             ) {
                 mail_vm.load_more()
             }
+        }
+    }
+
+    LaunchedEffect(categories_enabled, active_category, emails_fingerprint, inbox_state.has_more, inbox_state.is_loading, inbox_state.is_loading_more) {
+        val s = inbox_state
+        if (categories_enabled &&
+            s.has_more &&
+            !s.is_loading &&
+            !s.is_loading_more &&
+            !s.initial &&
+            s.next_cursor != null &&
+            s.current_folder == current_folder
+        ) {
+            val in_tab = emails.count {
+                org.astermail.android.mail.category_for_tab(it.category) == active_category
+            }
+            if (in_tab < 15) mail_vm.load_more()
         }
     }
 

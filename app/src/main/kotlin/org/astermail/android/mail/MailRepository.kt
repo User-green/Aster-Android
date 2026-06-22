@@ -74,6 +74,9 @@ data class DecryptedEnvelope(
     val to: List<Pair<String, String>>,
     val cc: List<Pair<String, String>>,
     val sent_at: String?,
+    val raw_headers: List<Pair<String, String>> = emptyList(),
+    val list_unsubscribe: String? = null,
+    val sender_verification: String? = null,
 )
 
 const val ASTER_SUBJECT_BUNDLE_PREFIX = "ASTER_BUNDLE_V2"
@@ -115,6 +118,7 @@ data class InboxItem(
     val is_spam: Boolean,
     val labels: List<String>,
     val tag_tokens: List<String> = emptyList(),
+    val category: String = "primary",
     val raw_item: MailItem,
 )
 
@@ -599,6 +603,7 @@ class MailRepository @Inject constructor(
             is_spam = meta?.is_spam ?: item.is_spam ?: false,
             labels = item.labels?.mapNotNull { it.folder_token } ?: emptyList(),
             tag_tokens = item.tag_tokens ?: emptyList(),
+            category = if (envelope != null) classify(envelope, meta) else "primary",
             raw_item = if (meta != null) item.copy(metadata = meta) else item,
         )
     }
@@ -1086,6 +1091,11 @@ class MailRepository @Inject constructor(
 
             val resolved = resolve_body(raw_text, raw_html)
 
+            val raw_headers = parse_raw_headers(obj.optJSONArray("raw_headers"))
+            val list_unsubscribe = raw_headers.firstOrNull {
+                it.first.equals("list-unsubscribe", ignoreCase = true)
+            }?.second
+
             DecryptedEnvelope(
                 subject = obj.optString("subject", ""),
                 body_text = resolved.first,
@@ -1095,10 +1105,24 @@ class MailRepository @Inject constructor(
                 to = to_arr,
                 cc = cc_arr,
                 sent_at = if (obj.has("sent_at")) obj.getString("sent_at") else null,
+                raw_headers = raw_headers,
+                list_unsubscribe = list_unsubscribe,
             )
         } catch (_: Throwable) {
             null
         }
+    }
+
+    private fun parse_raw_headers(arr: org.json.JSONArray?): List<Pair<String, String>> {
+        if (arr == null) return emptyList()
+        val result = mutableListOf<Pair<String, String>>()
+        for (i in 0 until arr.length()) {
+            val obj = arr.optJSONObject(i) ?: continue
+            val name = obj.optString("name", "")
+            if (name.isEmpty()) continue
+            result.add(name to obj.optString("value", ""))
+        }
+        return result
     }
 
     private fun parse_email_string_list(arr: org.json.JSONArray?): List<Pair<String, String>> {

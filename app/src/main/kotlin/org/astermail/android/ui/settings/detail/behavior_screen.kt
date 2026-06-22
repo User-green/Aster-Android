@@ -157,6 +157,7 @@ fun BehaviorScreen(
     val prefs_loaded = prefs != null
     var mark_read by remember(prefs_loaded) { mutableStateOf(prefs?.mark_as_read ?: "1_second") }
     var conversation_grouping by remember(prefs_loaded) { mutableStateOf(prefs?.conversation_grouping ?: true) }
+    var inbox_categories by remember(prefs_loaded) { mutableStateOf(prefs?.inbox_categories_enabled ?: true) }
     var conversation_order by remember(prefs_loaded) { mutableStateOf(prefs?.conversation_order ?: "newest") }
     var show_message_size by remember(prefs_loaded) { mutableStateOf(prefs?.show_message_size ?: false) }
     var force_dark_emails by remember(prefs_loaded) { mutableStateOf(prefs?.force_dark_emails ?: false) }
@@ -183,6 +184,7 @@ fun BehaviorScreen(
                 loaded_signature = sig
                 mark_read = prefs.mark_as_read
                 conversation_grouping = prefs.conversation_grouping
+                inbox_categories = prefs.inbox_categories_enabled
                 conversation_order = prefs.conversation_order
                 show_message_size = prefs.show_message_size
                 force_dark_emails = prefs.force_dark_emails
@@ -209,6 +211,7 @@ fun BehaviorScreen(
             base.copy(
                 mark_as_read = mark_read,
                 conversation_grouping = conversation_grouping,
+                inbox_categories_enabled = inbox_categories,
                 conversation_order = conversation_order,
                 show_message_size = show_message_size,
                 force_dark_emails = force_dark_emails,
@@ -267,6 +270,13 @@ fun BehaviorScreen(
                     subtitle = stringResource(R.string.conversation_grouping_subtitle),
                     checked = conversation_grouping,
                     on_change = { conversation_grouping = it; save_trigger++ },
+                )
+                AsterDivider(modifier = Modifier)
+                behavior_toggle(
+                    title = stringResource(R.string.inbox_categories),
+                    subtitle = stringResource(R.string.inbox_categories_subtitle),
+                    checked = inbox_categories,
+                    on_change = { inbox_categories = it; save_trigger++ },
                 )
                 AsterDivider(modifier = Modifier)
                 Text(

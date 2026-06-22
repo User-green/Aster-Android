@@ -1687,6 +1687,8 @@
     <!-- Behavior screen -->
     <string name="section_reading_conversations">Reading &amp; Conversations</string>
     <string name="conversation_grouping_subtitle">Group emails in the same conversation together</string>
+    <string name="inbox_categories">Inbox categories</string>
+    <string name="inbox_categories_subtitle">Sort incoming mail into Primary, Social, Promotions, and Updates</string>
     <string name="conversation_order_label">Conversation order</string>
     <string name="show_message_size">Show message size</string>
     <string name="show_message_size_subtitle">Display the size of each email in the inbox list</string>

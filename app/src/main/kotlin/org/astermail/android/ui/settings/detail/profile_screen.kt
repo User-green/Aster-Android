@@ -41,6 +41,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -243,34 +244,26 @@ fun ProfileScreen(
 
 @Composable
 private fun badge_chip(badge: Badge) {
-    val bg_color = remember(badge.color) {
-        try {
-            Color(android.graphics.Color.parseColor(badge.color))
-        } catch (_: Throwable) {
-            Color(0xFF6366F1)
-        }
-    }
-    val is_dark = remember(bg_color) {
-        (bg_color.red * 0.299f + bg_color.green * 0.587f + bg_color.blue * 0.114f) < 0.5f
-    }
-    val text_color = if (is_dark) Color.White else Color(0xFF1A1A1A)
+    val visual = remember(badge.slug) { badge_visual_for(badge.slug) }
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(bg_color)
+            .background(visual.color.copy(alpha = 0.13f))
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
         ) {
-            Text(
-                text = badge.icon,
-                fontSize = 14.sp,
+            Icon(
+                imageVector = visual.icon,
+                contentDescription = null,
+                tint = visual.color,
+                modifier = Modifier.size(14.dp),
             )
             Text(
                 text = badge.display_name,
-                color = text_color,
+                color = visual.color,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Medium,
             )

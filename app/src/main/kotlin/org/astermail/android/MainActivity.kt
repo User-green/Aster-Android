@@ -1051,6 +1051,7 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
     val drawer_state = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var selected_folder by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("inbox") }
+    var inbox_category by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("primary") }
     var filter_kind by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf<String?>(null) }
     var filter_value by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
     var filter_name by androidx.compose.runtime.saveable.rememberSaveable { mutableStateOf("") }
@@ -1093,6 +1094,20 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
     }
 
     val prefs = settings_state.preferences
+    val categories_enabled = prefs?.inbox_categories_enabled ?: true
+    val category_unread = androidx.compose.runtime.remember(inbox_state.items, selected_folder) {
+        if (selected_folder == "inbox") {
+            org.astermail.android.mail.category_unread_counts(inbox_state.items)
+        } else {
+            emptyMap()
+        }
+    }
+    val category_titles = mapOf(
+        "primary" to stringResource(R.string.rules_category_primary),
+        "social" to stringResource(R.string.rules_category_social),
+        "promotions" to stringResource(R.string.rules_category_promotions),
+        "updates" to stringResource(R.string.rules_category_updates),
+    )
     val theme_vm_inbox: ThemeViewModel = hiltViewModel()
 
     androidx.compose.runtime.LaunchedEffect(prefs) {
@@ -1271,6 +1286,15 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
                 drafts_count = stats?.drafts ?: 0,
                 spam_count = stats?.spam ?: 0,
                 trash_count = stats?.trash ?: 0,
+                categories_enabled = categories_enabled,
+                category_unread = category_unread,
+                selected_category = inbox_category,
+                on_select_category = { cat ->
+                    filter_kind = null
+                    selected_folder = "inbox"
+                    inbox_category = cat
+                    scope.launch { drawer_state.close() }
+                },
                 storage_used_fraction = storage_fraction,
                 storage_label = storage_label,
                 user_email = user_email,
@@ -1418,6 +1442,8 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
                             on_open_settings = { nav_controller.navigate(routes.settings) },
                             on_open_upgrade = { nav_controller.navigate(routes.settings_detail("billing")) },
                             current_folder = selected_folder,
+                            inbox_category = inbox_category,
+                            display_title = if (selected_folder == "inbox" && categories_enabled) category_titles[inbox_category] else null,
                             on_folder_change = { selected_folder = it },
                         )
                     }

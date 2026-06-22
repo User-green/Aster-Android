@@ -42,6 +42,8 @@ data class MailItemMetadata(
     val created_at: String? = null,
     val updated_at: String? = null,
     val item_type: String? = null,
+    val category: String? = null,
+    val category_pinned: Boolean = false,
 )
 
 @Serializable

@@ -92,6 +92,7 @@ data class UserPreferences(
     val swipe_left_action: String = "trash",
     val toolbar_actions: String = "",
     val conversation_grouping: Boolean = true,
+    val inbox_categories_enabled: Boolean = true,
     val conversation_order: String = "newest",
     val show_message_size: Boolean = false,
     val force_dark_emails: Boolean = false,

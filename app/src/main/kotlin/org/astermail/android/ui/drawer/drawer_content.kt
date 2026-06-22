@@ -73,6 +73,7 @@ import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Inbox
+import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.KeyboardArrowDown
 import androidx.compose.material.icons.outlined.KeyboardArrowUp
@@ -248,6 +249,10 @@ fun DrawerContent(
     drafts_count: Int = 0,
     spam_count: Int = 0,
     trash_count: Int = 0,
+    categories_enabled: Boolean = false,
+    category_unread: Map<String, Int> = emptyMap(),
+    selected_category: String = "primary",
+    on_select_category: (String) -> Unit = {},
     storage_used_fraction: Float = 0f,
     storage_label: String = "",
     user_email: String = "",
@@ -313,9 +318,9 @@ fun DrawerContent(
     val label_contacts = stringResource(R.string.folder_contacts)
     val label_subscriptions = stringResource(R.string.folder_subscriptions)
 
-    val core_items = remember(inbox_unread, drafts_count, spam_count, trash_count, label_inbox, label_sent, label_drafts, label_starred, label_archive, label_spam, label_trash) {
-        listOf(
-            drawer_folder_item("inbox", label_inbox, Icons.Outlined.Inbox, inbox_unread),
+    val core_items = remember(categories_enabled, inbox_unread, drafts_count, spam_count, trash_count, label_inbox, label_sent, label_drafts, label_starred, label_archive, label_spam, label_trash) {
+        listOfNotNull(
+            if (categories_enabled) null else drawer_folder_item("inbox", label_inbox, Icons.Outlined.Inbox, inbox_unread),
             drawer_folder_item("sent", label_sent, Icons.AutoMirrored.Outlined.Send),
             drawer_folder_item("drafts", label_drafts, Icons.Outlined.Description, drafts_count),
             drawer_folder_item("starred", label_starred, Icons.Outlined.Star),
@@ -360,6 +365,28 @@ fun DrawerContent(
             )
 
             Spacer(Modifier.height(AsterSpacing.sm))
+
+            if (categories_enabled) {
+                val category_rows = listOf(
+                    Triple("primary", stringResource(R.string.rules_category_primary), Icons.Outlined.Inbox),
+                    Triple("social", stringResource(R.string.rules_category_social), Icons.Outlined.People),
+                    Triple("promotions", stringResource(R.string.rules_category_promotions), Icons.Outlined.LocalOffer),
+                    Triple("updates", stringResource(R.string.rules_category_updates), Icons.Outlined.Notifications),
+                )
+                category_rows.forEach { (key, label, icon) ->
+                    drawer_row(
+                        icon = icon,
+                        label = label,
+                        count = category_unread[key] ?: 0,
+                        is_unread_count = true,
+                        selected = selected_id == "inbox" && key == selected_category,
+                        on_click = {
+                            on_select_category(key)
+                            on_close()
+                        },
+                    )
+                }
+            }
 
             core_items.forEach { item ->
                 drawer_row(
