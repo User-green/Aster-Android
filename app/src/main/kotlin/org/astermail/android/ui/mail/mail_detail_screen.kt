@@ -1667,25 +1667,17 @@ private fun compact_banner_action(
     onClick: () -> Unit,
 ) {
     val colors = AsterMaterial.colors
-    Box(
+    Text(
+        text = label,
+        color = colors.accent_blue,
+        fontSize = 13.sp,
+        fontWeight = if (primary) FontWeight.SemiBold else FontWeight.Medium,
+        maxLines = 1,
         modifier = Modifier
-            .clip(SquircleShape(999.dp))
-            .then(
-                if (primary) Modifier.background(colors.accent_blue)
-                else Modifier.border(1.dp, colors.border_secondary, SquircleShape(999.dp)),
-            )
+            .clip(SquircleShape(6.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 9.dp, vertical = 3.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (primary) Color.White else colors.accent_blue,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-    }
+            .padding(horizontal = 6.dp, vertical = 4.dp),
+    )
 }
 
 @Composable
@@ -1696,35 +1688,41 @@ private fun compact_banner(
 ) {
     val colors = AsterMaterial.colors
     var expanded by remember { mutableStateOf(false) }
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = AsterSpacing.md, vertical = 3.dp)
-            .clip(SquircleShape(10.dp))
-            .background(colors.bg_secondary)
-            .padding(horizontal = AsterSpacing.sm, vertical = 3.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = colors.text_secondary,
-            modifier = Modifier.size(13.dp),
-        )
-        Spacer(Modifier.width(6.dp))
-        Text(
-            text = label,
-            color = colors.text_secondary,
-            fontSize = 10.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = if (expanded) 6 else 1,
-            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
             modifier = Modifier
-                .weight(1f)
-                .clickable { expanded = !expanded },
+                .fillMaxWidth()
+                .background(colors.bg_secondary)
+                .padding(horizontal = AsterSpacing.md, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = colors.text_secondary,
+                modifier = Modifier.size(16.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = label,
+                color = colors.text_secondary,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = if (expanded) 6 else 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { expanded = !expanded },
+            )
+            Spacer(Modifier.width(6.dp))
+            actions()
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(1.dp)
+                .background(colors.border_secondary.copy(alpha = 0.5f)),
         )
-        Spacer(Modifier.width(AsterSpacing.sm))
-        actions()
     }
 }
 
@@ -1775,7 +1773,7 @@ private fun external_content_banner(
             primary = false,
             onClick = on_allow_once,
         )
-        Spacer(Modifier.width(AsterSpacing.sm))
+        Text("·", color = AsterMaterial.colors.text_muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 4.dp))
         compact_banner_action(
             label = stringResource(R.string.detail_external_always_allow),
             primary = true,
@@ -1807,7 +1805,7 @@ private fun traffic_saver_banner(
             primary = false,
             onClick = on_load_once,
         )
-        Spacer(Modifier.width(AsterSpacing.sm))
+        Text("·", color = AsterMaterial.colors.text_muted, fontSize = 13.sp, modifier = Modifier.padding(horizontal = 4.dp))
         compact_banner_action(
             label = stringResource(R.string.detail_disable_traffic_saving),
             primary = true,
