@@ -545,6 +545,8 @@ fun ComposeScreen(
             val mime = context.contentResolver.getType(uri) ?: "application/octet-stream"
             if (size <= 25 * 1024 * 1024) {
                 attachments = attachments + AttachmentItem(uri, name, size, mime)
+            } else {
+                send_error = context.getString(R.string.attachment_too_large, name)
             }
         }
     }
@@ -567,6 +569,8 @@ fun ComposeScreen(
             val mime = context.contentResolver.getType(uri) ?: "image/jpeg"
             if (size <= 25 * 1024 * 1024) {
                 attachments = attachments + AttachmentItem(uri, name, size, mime)
+            } else {
+                send_error = context.getString(R.string.attachment_too_large, name)
             }
         }
     }
@@ -1065,7 +1069,7 @@ fun ComposeScreen(
                     },
                     on_commit = {
                         val trimmed = to_input.trim()
-                        if (trimmed.isNotEmpty()) {
+                        if (trimmed.isNotEmpty() && is_valid_email_chip(trimmed)) {
                             to_chips = to_chips + trimmed
                             to_input = ""
                             schedule_draft_save()
@@ -1113,7 +1117,7 @@ fun ComposeScreen(
                         },
                         on_commit = {
                             val trimmed = cc_input.trim()
-                            if (trimmed.isNotEmpty()) {
+                            if (trimmed.isNotEmpty() && is_valid_email_chip(trimmed)) {
                                 cc_chips = cc_chips + trimmed
                                 cc_input = ""
                                 schedule_draft_save()
@@ -1144,7 +1148,7 @@ fun ComposeScreen(
                         },
                         on_commit = {
                             val trimmed = bcc_input.trim()
-                            if (trimmed.isNotEmpty()) {
+                            if (trimmed.isNotEmpty() && is_valid_email_chip(trimmed)) {
                                 bcc_chips = bcc_chips + trimmed
                                 bcc_input = ""
                                 schedule_draft_save()
