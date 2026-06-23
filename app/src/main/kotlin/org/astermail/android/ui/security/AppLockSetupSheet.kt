@@ -126,6 +126,7 @@ fun AppLockSetupSheet(
     }
 
     fun handle_first_digit(d: String) {
+        if (first_pin.length >= chosen_digits) return
         val next = first_pin + d
         first_pin = next
         if (next.length == chosen_digits) { confirm_input = ""; step = SetupStep.confirm_pin }
@@ -133,6 +134,7 @@ fun AppLockSetupSheet(
 
     fun handle_confirm_digit(d: String) {
         if (saving) return
+        if (confirm_input.length >= chosen_digits) return
         val next = confirm_input + d
         confirm_input = next
         if (next.length == chosen_digits) {
