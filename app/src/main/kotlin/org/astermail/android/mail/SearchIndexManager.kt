@@ -159,6 +159,7 @@ class SearchIndexManager @Inject constructor(
                 is_spam = item.is_spam,
                 labels = item.labels.joinToString(","),
                 indexed_at = System.currentTimeMillis(),
+                category = item.category,
             )
         }
         mutex.withLock {

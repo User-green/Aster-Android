@@ -24,7 +24,7 @@ package org.astermail.android.storage.search
 import androidx.room.Database
 import androidx.room.RoomDatabase
 
-@Database(entities = [DecryptedMailEntity::class], version = 2, exportSchema = false)
+@Database(entities = [DecryptedMailEntity::class], version = 3, exportSchema = false)
 abstract class AsterDatabase : RoomDatabase() {
     abstract fun decrypted_mail_dao(): DecryptedMailDao
 }

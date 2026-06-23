@@ -1686,5 +1686,6 @@ fun org.astermail.android.storage.search.DecryptedMailEntity.to_inbox_item(): In
     is_archived = is_archived,
     is_spam = is_spam,
     labels = if (labels.isBlank()) emptyList() else labels.split(","),
+    category = category,
     raw_item = org.astermail.android.api.mail.MailItem(id = id),
 )

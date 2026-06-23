@@ -43,4 +43,5 @@ data class DecryptedMailEntity(
     val is_spam: Boolean,
     val labels: String,
     val indexed_at: Long,
+    val category: String = "primary",
 )
