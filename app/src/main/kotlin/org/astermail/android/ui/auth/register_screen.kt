@@ -73,6 +73,7 @@ fun RegisterScreen(
 
     LaunchedEffect(auth_state) {
         if (auth_state is AuthUiState.Error && state.step.value == RegisterStep.generating) {
+            state.captcha_token.value = null
             state.step.value = RegisterStep.password
         }
     }

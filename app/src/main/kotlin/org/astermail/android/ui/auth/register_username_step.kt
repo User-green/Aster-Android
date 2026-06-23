@@ -98,7 +98,9 @@ fun RegisterUsernameStep(
 
         AsterTextField(
             value = state.username.value,
-            onValueChange = { state.username.value = it },
+            onValueChange = { input ->
+                state.username.value = input.filter { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' }
+            },
             label = stringResource(R.string.username),
             placeholder = stringResource(R.string.username_placeholder),
             keyboard_options = KeyboardOptions(
@@ -140,7 +142,7 @@ fun RegisterUsernameStep(
         AsterButton(
             label = stringResource(R.string.next),
             onClick = on_next,
-            enabled = state.username.value.isNotBlank(),
+            enabled = state.username.value.length in 3..40,
         )
 
         Spacer(Modifier.height(AsterSpacing.lg))
