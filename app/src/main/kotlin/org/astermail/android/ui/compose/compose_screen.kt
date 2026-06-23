@@ -874,9 +874,9 @@ fun ComposeScreen(
 
     fun do_send() {
         if (!send_lock.compareAndSet(false, true)) return
-        to_input.trim().let { if (it.isNotEmpty()) { to_chips = to_chips + it; to_input = "" } }
-        cc_input.trim().let { if (it.isNotEmpty()) { cc_chips = cc_chips + it; cc_input = "" } }
-        bcc_input.trim().let { if (it.isNotEmpty()) { bcc_chips = bcc_chips + it; bcc_input = "" } }
+        to_input.trim().let { if (it.isNotEmpty() && is_valid_email_chip(it)) { to_chips = to_chips + it; to_input = "" } }
+        cc_input.trim().let { if (it.isNotEmpty() && is_valid_email_chip(it)) { cc_chips = cc_chips + it; cc_input = "" } }
+        bcc_input.trim().let { if (it.isNotEmpty() && is_valid_email_chip(it)) { bcc_chips = bcc_chips + it; bcc_input = "" } }
         if (to_chips.isEmpty() && cc_chips.isEmpty() && bcc_chips.isEmpty()) { send_lock.set(false); return }
         if (is_sending) { send_lock.set(false); return }
         is_sending = true
