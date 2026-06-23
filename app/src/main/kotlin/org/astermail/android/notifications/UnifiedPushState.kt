@@ -88,6 +88,14 @@ object UnifiedPushState {
             .apply()
     }
 
+    fun clear_backend_registration(context: Context) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .remove(KEY_REGISTERED_ENDPOINT)
+            .remove(KEY_REGISTERED_P256DH)
+            .apply()
+    }
+
     fun try_register(context: Context) {
         scope.launch {
             runCatching {

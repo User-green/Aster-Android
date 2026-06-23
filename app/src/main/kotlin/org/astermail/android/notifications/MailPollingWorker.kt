@@ -196,7 +196,7 @@ class MailPollingWorker(
             return
         }
         val subject = newest?.subject?.trim().orEmpty()
-        val message_id = newest?.id?.hashCode()?.and(0x7fffffff) ?: NOTIFICATION_ID
+        val message_id = message_notification_id(newest?.id?.hashCode() ?: 0)
         show_message(
             context = context,
             sender = sender!!,
@@ -308,6 +308,8 @@ class MailPollingWorker(
         }
 
         fun enqueue(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_PUSH_ENABLED, true)) return
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
                 .build()
@@ -375,6 +377,7 @@ class MailPollingWorker(
             } else {
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME)
                 WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_CHAIN)
+                WorkManager.getInstance(context).cancelUniqueWork(WORK_NAME_IMMEDIATE)
             }
         }
 
@@ -458,6 +461,10 @@ class MailPollingWorker(
                 .setAutoCancel(true)
                 .build()
             manager.notify(SUMMARY_NOTIFICATION_ID, summary)
+        }
+
+        fun message_notification_id(seed: Int): Int {
+            return 2000 + ((seed and 0x7fffffff) % 1_000_000)
         }
 
         private fun can_post(context: Context): Boolean {

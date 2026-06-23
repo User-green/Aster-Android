@@ -74,9 +74,9 @@ class AsterPushService : PushService() {
         val subject = envelope.subject
         if (sender.isBlank() || subject.isBlank()) return PushResult.NeedsFetch
         val notification_id = if (item_id.isNotBlank()) {
-            item_id.hashCode() and 0x7fffffff
+            MailPollingWorker.message_notification_id(item_id.hashCode())
         } else {
-            (System.currentTimeMillis().toInt()) and 0x7fffffff
+            MailPollingWorker.message_notification_id(System.currentTimeMillis().toInt())
         }
         MailPollingWorker.show_message(
             context = context,
