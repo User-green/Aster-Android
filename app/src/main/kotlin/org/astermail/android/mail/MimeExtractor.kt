@@ -147,14 +147,11 @@ object MimeExtractor {
             val lower = headers.lowercase()
             val nested = get_boundary(headers)
 
-            if (nested != null && (
-                    lower.contains("multipart/alternative") ||
-                        lower.contains("multipart/related") ||
-                        lower.contains("multipart/mixed")
-                    )
-            ) {
+            if (nested != null && lower.contains("multipart/")) {
                 val r = extract_from_multipart(payload, nested, prefer_html, depth + 1)
-                if (r != null) return r
+                if (r != null) {
+                    if (r.is_html) { if (html == null) html = r } else { if (plain == null) plain = r }
+                }
                 continue
             }
 
