@@ -2770,7 +2770,7 @@ $dark_css
   function measure_h(){
     var m=document.getElementById('m');
     var base=m?m.offsetHeight:0;
-    if(document.documentElement.getAttribute('data-nl'))return base;
+    if(document.documentElement.getAttribute('data-nl'))return aster_content_height();
     var de=document.documentElement;var b=document.body;var h=base;
     if(de)h=Math.max(h,de.scrollHeight,de.offsetHeight);
     if(b)h=Math.max(h,b.scrollHeight,b.offsetHeight);
@@ -2778,6 +2778,44 @@ $dark_css
   }
   function report_h(){if(document.getElementById('m'))console.log('ASTER_HEIGHT:'+measure_h())}
   function report_h_exact(){if(document.getElementById('m'))console.log('ASTER_HEIGHT_EXACT:'+measure_h())}
+  function aster_content_height(){
+    var m=document.getElementById('m');
+    if(!m)return 0;
+    var full=m.offsetHeight;
+    if(full<=0)return full;
+    var m_top=m.getBoundingClientRect().top;
+    var wall=window.getComputedStyle(m).backgroundColor;
+    var max=0;
+    var all=m.querySelectorAll('*');
+    for(var i=0;i<all.length;i++){
+      var e=all[i];
+      var r=e.getBoundingClientRect();
+      if(r.height<=0||r.width<=0)continue;
+      var meaningful=false;
+      var tag=e.tagName;
+      if(tag==='IMG'){if(r.height>=4&&r.width>=4)meaningful=true;}
+      else if(tag==='HR'||tag==='VIDEO'||tag==='CANVAS'||tag==='SVG')meaningful=true;
+      if(!meaningful){
+        var cs=window.getComputedStyle(e);
+        var partial=r.height<full*0.9;
+        if(partial){
+          var bg=cs.backgroundColor;
+          if(bg&&bg!=='transparent'&&bg!=='rgba(0, 0, 0, 0)'&&bg!==wall)meaningful=true;
+          if(!meaningful&&cs.backgroundImage&&cs.backgroundImage!=='none')meaningful=true;
+          if(!meaningful&&parseFloat(cs.borderTopWidth||0)+parseFloat(cs.borderBottomWidth||0)>0)meaningful=true;
+        }
+      }
+      if(!meaningful){
+        for(var c=0;c<e.childNodes.length;c++){
+          var n=e.childNodes[c];
+          if(n.nodeType===3&&n.nodeValue&&n.nodeValue.replace(/ /g,' ').trim().length>0){meaningful=true;break;}
+        }
+      }
+      if(meaningful){var bottom=r.bottom-m_top;if(bottom>max)max=bottom;}
+    }
+    if(max<=0||max>=full)return full;
+    return Math.min(full,Math.ceil(max));
+  }
   function linkify_text_nodes(root){
     var url_re=/((?:https?:\/\/|www\.)[^\s<>"']+[^\s<>"'.,;:!?)\]}])|([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g;
     var skip_tags={A:1,SCRIPT:1,STYLE:1,TEXTAREA:1,CODE:1,PRE:1,BUTTON:1};
@@ -2808,7 +2846,7 @@ $dark_css
     if(!m)return;
     if(document.documentElement.getAttribute('data-nl')){
       aster_fit_scale=1.0;
-      console.log('ASTER_HEIGHT_EXACT:'+(Math.round(m.offsetHeight)));
+      console.log('ASTER_HEIGHT_EXACT:'+(Math.round(aster_content_height())));
       return;
     }
     var vw=window.innerWidth;
@@ -3043,9 +3081,9 @@ $dark_css
 
             override fun onPageFinished(view: android.webkit.WebView?, url: String?) {
                 val bg_detect_js = """(function(){
-  var body=document.body;if(!body)return;
-  if(!body.style.backgroundColor||body.style.backgroundColor==='transparent'||body.style.backgroundColor==='rgba(0, 0, 0, 0)'){
-    var first=body.firstElementChild;
+  var m=document.getElementById('m');if(!m)return;
+  if(!m.style.backgroundColor||m.style.backgroundColor==='transparent'||m.style.backgroundColor==='rgba(0, 0, 0, 0)'){
+    var first=m.firstElementChild;
     if(first){
       var bg=first.getAttribute('bgcolor')||first.style.backgroundColor;
       if(!bg||bg==='transparent'||bg==='rgba(0, 0, 0, 0)'){
@@ -3053,9 +3091,14 @@ $dark_css
         if(tag==='TABLE'||tag==='DIV'||tag==='CENTER'){bg=window.getComputedStyle(first).backgroundColor}
       }
       if(bg&&bg!=='transparent'&&bg!=='rgba(0, 0, 0, 0)'){
-        body.style.backgroundColor=bg;document.documentElement.style.backgroundColor=bg;
+        m.style.backgroundColor=bg;
       }
     }
+  }
+  var nl=document.documentElement.getAttribute('data-nl');
+  var cur=window.getComputedStyle(m).backgroundColor;
+  if(nl&&(!cur||cur==='transparent'||cur==='rgba(0, 0, 0, 0)')){
+    m.style.backgroundColor='#ffffff';
   }
 })()"""
                 val fit_and_measure_js = """(function(){window.__aster_fit&&window.__aster_fit();})()"""
@@ -3067,6 +3110,7 @@ $dark_css
                     view?.evaluateJavascript("""(function(){var s=document.createElement('style');s.textContent='a{text-decoration:underline!important}';document.head.appendChild(s);})()""", null)
                 }
                 view?.evaluateJavascript(bg_detect_js, null)
+                view?.setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 view?.evaluateJavascript(fit_and_measure_js, null)
                 view?.postDelayed({ view.evaluateJavascript(fit_and_measure_js, null) }, 300)
                 view?.postDelayed({ view.evaluateJavascript(fit_and_measure_js, null) }, 1000)
