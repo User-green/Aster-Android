@@ -79,12 +79,12 @@ class SessionSnapshotStore(context: Context? = null) {
             SessionSnapshot(
                 token_access = token_access,
                 token_refresh = p.getString("${account_id}_$key_token_refresh", null) ?: token_access,
-                session_key = p.getString("${account_id}_$key_session_key", null)?.let { decode_b64(it) },
-                passphrase = p.getString("${account_id}_$key_passphrase", null)?.let { decode_b64(it) },
+                session_key = decode_b64_field(p, "${account_id}_$key_session_key"),
+                passphrase = decode_b64_field(p, "${account_id}_$key_passphrase"),
                 identity_key = p.getString("${account_id}_$key_identity", null),
                 encrypted_vault = p.getString("${account_id}_$key_enc_vault", null),
                 vault_nonce = p.getString("${account_id}_$key_vault_nonce", null),
-                password_salt = p.getString("${account_id}_$key_password_salt", null)?.let { decode_b64(it) },
+                password_salt = decode_b64_field(p, "${account_id}_$key_password_salt"),
                 user_id = p.getString("${account_id}_$key_user_id", null),
                 user_email = p.getString("${account_id}_$key_user_email", null),
                 recovery_codes = p.getString("${account_id}_$key_recovery_codes", null)?.split("\n")?.filter { it.isNotBlank() },
@@ -112,6 +112,9 @@ class SessionSnapshotStore(context: Context? = null) {
 
     private fun decode_b64(s: String): ByteArray =
         Base64.decode(s, Base64.DEFAULT)
+
+    private fun decode_b64_field(p: SharedPreferences, key: String): ByteArray? =
+        runCatching { p.getString(key, null)?.let { decode_b64(it) } }.getOrNull()
 
     companion object {
         private const val prefs_name = "aster_session_snapshots_v1"

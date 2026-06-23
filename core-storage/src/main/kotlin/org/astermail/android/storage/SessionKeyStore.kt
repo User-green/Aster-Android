@@ -78,12 +78,12 @@ class SessionKeyStore(context: Context? = null) {
     init {
         prefs?.let { p ->
             runCatching {
-                p.getString(key_session_key, null)?.let { key_material = decode_b64(it) }
-                p.getString(key_passphrase, null)?.let { passphrase = decode_b64(it) }
+                key_material = decode_b64_field(p, key_session_key)
+                passphrase = decode_b64_field(p, key_passphrase)
                 identity_key = p.getString(key_identity, null)
                 encrypted_vault = p.getString(key_enc_vault, null)
                 vault_nonce = p.getString(key_vault_nonce, null)
-                p.getString(key_password_salt, null)?.let { password_salt = decode_b64(it) }
+                password_salt = decode_b64_field(p, key_password_salt)
                 user_id = p.getString(key_user_id, null)
                 user_email = p.getString(key_user_email, null)
                 val saved_codes = p.getString(key_recovery_codes, null)
@@ -342,6 +342,9 @@ class SessionKeyStore(context: Context? = null) {
 
     private fun decode_b64(s: String): ByteArray =
         Base64.decode(s, Base64.DEFAULT)
+
+    private fun decode_b64_field(p: SharedPreferences, key: String): ByteArray? =
+        runCatching { p.getString(key, null)?.let { decode_b64(it) } }.getOrNull()
 
     companion object {
         private const val prefs_name = "aster_session_keys_v1"
