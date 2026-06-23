@@ -215,15 +215,13 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun request_notification_permission_on_launch() {
+private fun request_notification_permission(should_request: Boolean) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val launcher = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
-    ) {
-        context.getSharedPreferences("aster_perms", android.content.Context.MODE_PRIVATE)
-            .edit().putBoolean("notif_perm_asked", true).apply()
-    }
-    androidx.compose.runtime.LaunchedEffect(Unit) {
+    ) {}
+    androidx.compose.runtime.LaunchedEffect(should_request) {
+        if (!should_request) return@LaunchedEffect
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
             val prefs = context.getSharedPreferences("aster_perms", android.content.Context.MODE_PRIVATE)
             val already_asked = prefs.getBoolean("notif_perm_asked", false)
@@ -231,6 +229,7 @@ private fun request_notification_permission_on_launch() {
                 context, android.Manifest.permission.POST_NOTIFICATIONS,
             ) == android.content.pm.PackageManager.PERMISSION_GRANTED
             if (!granted && !already_asked) {
+                prefs.edit().putBoolean("notif_perm_asked", true).apply()
                 launcher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
             }
         }
@@ -239,7 +238,6 @@ private fun request_notification_permission_on_launch() {
 
 @Composable
 private fun AsterRoot() {
-    request_notification_permission_on_launch()
     val theme_vm: ThemeViewModel = hiltViewModel()
     val mode_state by theme_vm.theme_mode.collectAsStateWithLifecycle()
     val text_size_state by theme_vm.text_size.collectAsStateWithLifecycle()
@@ -391,6 +389,8 @@ private fun AsterNavHost() {
     val is_ready by auth_gate.is_ready.collectAsStateWithLifecycle()
     val is_signed_in_state by auth_gate.is_signed_in.collectAsStateWithLifecycle()
     val is_locked by lock_vm.store.is_locked.collectAsStateWithLifecycle()
+
+    request_notification_permission(should_request = is_signed_in_state && !is_locked)
 
     val nav_scope = rememberCoroutineScope()
 

@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
 import androidx.work.CoroutineWorker
+import androidx.work.Data
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
@@ -79,6 +80,11 @@ class MailPollingWorker(
 
         val token_store = TokenStore(context)
         if (token_store.access_token == null) return Result.success()
+
+        if (inputData.getBoolean(KEY_FORCE_NOTIFY, false)) {
+            notify_for_new_mail(1)
+            return Result.success()
+        }
 
         lateinit var client: ApiClient
         val token_provider = object : TokenProvider {
@@ -167,14 +173,24 @@ class MailPollingWorker(
             show_generic(context, arrived)
             return
         }
-        val page = try {
-            kotlinx.coroutines.withTimeout(20_000L) {
-                repo.fetch_inbox(limit = arrived.coerceAtMost(5))
-            }.getOrNull()
-        } catch (_: Throwable) { null }
-        val newest = page?.items?.firstOrNull { !it.is_read }
-            ?: page?.items?.firstOrNull()
-        val sender = (newest?.sender_name?.takeIf { it.isNotBlank() } ?: newest?.sender_email)?.trim()
+        var newest: org.astermail.android.mail.InboxItem? = null
+        var sender: String? = null
+        repeat(3) { attempt ->
+            if (!sender.isNullOrBlank()) return@repeat
+            if (attempt > 0) kotlinx.coroutines.delay(1_500L)
+            val page = try {
+                kotlinx.coroutines.withTimeout(20_000L) {
+                    repo.fetch_inbox(limit = arrived.coerceAtMost(5))
+                }.getOrNull()
+            } catch (_: Throwable) { null }
+            val candidate = page?.items?.firstOrNull { !it.is_read }
+                ?: page?.items?.firstOrNull()
+            val candidate_sender = (candidate?.sender_name?.takeIf { it.isNotBlank() } ?: candidate?.sender_email)?.trim()
+            if (!candidate_sender.isNullOrBlank()) {
+                newest = candidate
+                sender = candidate_sender
+            }
+        }
         if (sender.isNullOrBlank()) {
             show_generic(context, arrived)
             return
@@ -183,7 +199,7 @@ class MailPollingWorker(
         val message_id = newest?.id?.hashCode()?.and(0x7fffffff) ?: NOTIFICATION_ID
         show_message(
             context = context,
-            sender = sender,
+            sender = sender!!,
             subject = subject,
             preview = newest?.preview.orEmpty(),
             message_id = message_id,
@@ -206,6 +222,7 @@ class MailPollingWorker(
         const val WORK_NAME_CHAIN = "mail_polling_chain"
         const val WORK_NAME_IMMEDIATE = "mail_polling_immediate"
         const val KEY_TEST_COUNT = "test_count"
+        const val KEY_FORCE_NOTIFY = "force_notify"
         private const val PREFS_NAME = "mail_polling_prefs"
         private const val KEY_CACHED_UNREAD = "cached_unread_count"
         private const val KEY_CACHED_INBOX = "cached_inbox_count"
@@ -314,6 +331,24 @@ class MailPollingWorker(
                 WORK_NAME,
                 ExistingPeriodicWorkPolicy.UPDATE,
                 backup,
+            )
+        }
+
+        fun enqueue_forced_notify(context: Context) {
+            val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            if (!prefs.getBoolean(KEY_PUSH_ENABLED, true)) return
+            val constraints = Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+            val request = OneTimeWorkRequestBuilder<MailPollingWorker>()
+                .setConstraints(constraints)
+                .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                .setInputData(Data.Builder().putBoolean(KEY_FORCE_NOTIFY, true).build())
+                .build()
+            WorkManager.getInstance(context).enqueueUniqueWork(
+                WORK_NAME_IMMEDIATE,
+                ExistingWorkPolicy.REPLACE,
+                request,
             )
         }
 
