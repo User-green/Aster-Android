@@ -165,7 +165,6 @@ class ContactsViewModel @Inject constructor(
                     .map { it.email.lowercase().trim() }
                     .toSet()
                 val existing_names = _state.value.contacts
-                    .filter { it.email.isBlank() }
                     .map { it.name.lowercase().trim() }
                     .toSet()
                 val new_contacts = device_contacts.filter { contact ->
