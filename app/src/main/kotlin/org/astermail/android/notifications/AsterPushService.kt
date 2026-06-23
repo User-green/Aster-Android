@@ -49,6 +49,7 @@ class AsterPushService : PushService() {
             return PushResult.Shown
         }
         if (type != "new_mail" && type != "wake") return PushResult.Ignore
+        if (!MailPollingWorker.is_notify_new_email(context)) return PushResult.Ignore
         val entry = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,

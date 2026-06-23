@@ -155,6 +155,7 @@ class MailPollingWorker(
     }
 
     private suspend fun notify_for_new_mail(arrived: Int) {
+        if (!is_notify_new_email(context)) return
         val entry = try {
             EntryPointAccessors.fromApplication(
                 context.applicationContext,
@@ -229,6 +230,7 @@ class MailPollingWorker(
         private const val KEY_PUSH_ENABLED = "push_notifications_enabled"
         private const val KEY_LAST_NOTIFIED_INBOX = "last_notified_inbox_count"
         private const val KEY_PRIVATE_NOTIFICATIONS = "private_notifications"
+        private const val KEY_NOTIFY_NEW_EMAIL = "notify_new_email"
         private const val KEY_QUIET_HOURS_ENABLED = "quiet_hours_enabled"
         private const val KEY_QUIET_HOURS_START = "quiet_hours_start"
         private const val KEY_QUIET_HOURS_END = "quiet_hours_end"
@@ -286,6 +288,18 @@ class MailPollingWorker(
             context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .edit()
                 .putBoolean(KEY_PRIVATE_NOTIFICATIONS, enabled)
+                .apply()
+        }
+
+        fun is_notify_new_email(context: Context): Boolean {
+            return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getBoolean(KEY_NOTIFY_NEW_EMAIL, true)
+        }
+
+        fun set_notify_new_email(context: Context, enabled: Boolean) {
+            context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_NOTIFY_NEW_EMAIL, enabled)
                 .apply()
         }
 

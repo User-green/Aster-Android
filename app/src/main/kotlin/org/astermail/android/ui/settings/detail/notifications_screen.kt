@@ -163,6 +163,7 @@ fun NotificationsScreen(
             quiet_hours_start = prefs.quiet_hours_start.takeIf { it.isNotBlank() } ?: "22:00"
             quiet_hours_end = prefs.quiet_hours_end.takeIf { it.isNotBlank() } ?: "07:00"
             MailPollingWorker.set_quiet_hours(context, quiet_hours, quiet_hours_start, quiet_hours_end)
+            MailPollingWorker.set_notify_new_email(context, new_email)
         }
     }
 
@@ -249,7 +250,7 @@ fun NotificationsScreen(
             v_gap(AsterSpacing.lg)
             section_label(stringResource(R.string.events))
             AsterCard(modifier = Modifier.fillMaxWidth()) {
-                switch_row(stringResource(R.string.new_emails), null, new_email) { new_email = it; save_trigger++ }
+                switch_row(stringResource(R.string.new_emails), null, new_email) { new_email = it; save_trigger++; MailPollingWorker.set_notify_new_email(context, it) }
                 AsterDivider(modifier = Modifier)
                 switch_row(stringResource(R.string.replies), null, replies) { replies = it; save_trigger++ }
                 AsterDivider(modifier = Modifier)
