@@ -41,7 +41,7 @@ import org.astermail.android.api.external_accounts.OAuthAuthorizeRequest
 import org.astermail.android.api.external_accounts.TriggerSyncRequest
 import org.astermail.android.storage.SessionKeyStore
 
-enum class ExternalAccountsError { LOAD_FAILED, OAUTH_FAILED, MANUAL_FAILED, NO_SESSION_KEY }
+enum class ExternalAccountsError { LOAD_FAILED, OAUTH_FAILED, MANUAL_FAILED, NO_SESSION_KEY, DELETE_FAILED }
 
 data class ExternalAccountsUiState(
     val accounts: List<ExternalAccount> = emptyList(),
@@ -207,8 +207,12 @@ class ExternalAccountsViewModel @Inject constructor(
 
     fun delete_account(account_token: String) {
         viewModelScope.launch {
-            runCatching { withContext(Dispatchers.IO) { api.delete_account(account_token) } }
-            load()
+            val result = runCatching { withContext(Dispatchers.IO) { api.delete_account(account_token) } }
+            if (result.isFailure) {
+                _state.value = _state.value.copy(error = ExternalAccountsError.DELETE_FAILED)
+            } else {
+                load()
+            }
         }
     }
 

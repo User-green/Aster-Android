@@ -1178,6 +1178,7 @@
     <string name="ext_error_oauth_failed">Couldn\'t start sign-in. Check your connection and try again.</string>
     <string name="ext_error_manual_failed">Couldn\'t save the account. Verify the host, port, and credentials.</string>
     <string name="ext_error_no_session">Your session expired. Sign out and back in to continue.</string>
+    <string name="ext_error_delete_failed">Couldn\'t remove that account. Check your connection and try again.</string>
     <string name="ext_manual_saved">Account added. Sync starting…</string>
     <string name="ext_last_sync">Last sync: %1$s</string>
     <string name="ext_section_oauth">Quick switch</string>

@@ -229,7 +229,7 @@ fun ExternalAccountsScreen(
                                 smtp_password = smtp_pass,
                             )
                         },
-                        enabled = imap_email.contains("@") && imap_host.isNotBlank() && imap_user.isNotBlank() && imap_pass.isNotBlank() && !state.manual_submitting,
+                        enabled = imap_email.contains("@") && imap_host.isNotBlank() && imap_user.isNotBlank() && imap_pass.isNotBlank() && (imap_port.toIntOrNull() ?: 0) in 1..65535 && !state.manual_submitting,
                         is_loading = state.manual_submitting,
                     )
                     if (state.manual_success) {
@@ -309,6 +309,7 @@ fun ExternalAccountsScreen(
                 ExternalAccountsError.OAUTH_FAILED -> stringResource(R.string.ext_error_oauth_failed)
                 ExternalAccountsError.MANUAL_FAILED -> stringResource(R.string.ext_error_manual_failed)
                 ExternalAccountsError.NO_SESSION_KEY -> stringResource(R.string.ext_error_no_session)
+                ExternalAccountsError.DELETE_FAILED -> stringResource(R.string.ext_error_delete_failed)
             }
             error_banner(msg)
         }
