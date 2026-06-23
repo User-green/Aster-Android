@@ -1613,7 +1613,7 @@ class MailViewModel @Inject constructor(
     private suspend fun fetch_for_folder(
         folder: String,
         cursor: String? = null,
-        limit: Int = 20,
+        limit: Int = 50,
     ): Result<InboxPage> = when (folder) {
         "inbox" -> repository.fetch_inbox(limit = limit, cursor = cursor)
         "sent" -> repository.fetch_sent(limit = limit, cursor = cursor)
