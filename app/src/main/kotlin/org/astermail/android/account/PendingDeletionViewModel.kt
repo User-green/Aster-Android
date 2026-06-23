@@ -102,7 +102,7 @@ class PendingDeletionViewModel @Inject constructor(
     }
 
     fun sign_out(on_done: () -> Unit) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             runCatching { auth_repository.logout() }
             _state.value = UiState(visible = false)
             withContext(Dispatchers.Main) { on_done() }
