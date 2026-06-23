@@ -136,10 +136,8 @@ object EmailHtmlSanitizer {
             }
             for (k in to_remove) el.removeAttr(k)
             if (el.tagName().equals("a", ignoreCase = true)) {
-                if (el.hasAttr("target")) {
-                    el.attr("target", "_blank")
-                    el.attr("rel", "noopener noreferrer nofollow")
-                }
+                el.attr("target", "_blank")
+                el.attr("rel", "noopener noreferrer nofollow")
             }
         }
     }
