@@ -228,6 +228,9 @@ class MailRepository @Inject constructor(
                     suppress_branding = suppress_branding,
                 )
                 val unit_result: Result<Unit> = result.map { }
+                if (result.isSuccess) {
+                    draft_id?.takeIf { it.isNotBlank() }?.let { runCatching { delete_draft(it) } }
+                }
                 _send_result_events.tryEmit(unit_result)
                 on_completed?.invoke(unit_result)
             }
@@ -347,11 +350,20 @@ class MailRepository @Inject constructor(
     suspend fun fetch_draft_for_compose(
         draft_id: String,
     ): Result<Pair<InboxItem, DecryptedEnvelope?>> = runCatching {
-        val response = mail_api.list_drafts(limit = 100)
-        val draft = response.items.firstOrNull { it.id == draft_id }
-            ?: throw IllegalStateException("draft not found")
-        val envelope = try_decrypt_envelope(draft.encrypted_content, draft.content_nonce)
-        val item = decrypt_draft_item(draft)
+        var cursor: String? = null
+        var draft: org.astermail.android.api.mail.DraftItem? = null
+        var pages = 0
+        while (pages < 50) {
+            val response = mail_api.list_drafts(limit = 100, cursor = cursor)
+            draft = response.items.firstOrNull { it.id == draft_id }
+            if (draft != null) break
+            if (!response.has_more || response.next_cursor == null) break
+            cursor = response.next_cursor
+            pages++
+        }
+        val found = draft ?: throw IllegalStateException("draft not found")
+        val envelope = try_decrypt_envelope(found.encrypted_content, found.content_nonce)
+        val item = decrypt_draft_item(found)
         Pair(item, envelope)
     }
 
