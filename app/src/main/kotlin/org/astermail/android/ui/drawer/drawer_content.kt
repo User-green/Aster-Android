@@ -294,6 +294,7 @@ fun DrawerContent(
             more_expanded = !initial_more_collapsed
             folders_expanded = !initial_folders_collapsed
             labels_expanded = !initial_labels_collapsed
+            aliases_expanded = !initial_aliases_collapsed
             prefs_synced = true
         }
     }
