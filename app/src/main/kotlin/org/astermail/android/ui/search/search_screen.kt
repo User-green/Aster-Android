@@ -110,15 +110,14 @@ private data class SearchOperator(
 
 private fun parse_query(raw: String): ParsedQuery {
     val operators = mutableListOf<SearchOperator>()
-    var remaining = raw
 
     OPERATOR_REGEX.findAll(raw).forEach { match ->
         val negated = match.groupValues[1] == "-"
         val key = match.groupValues[2].lowercase()
         val value = (match.groupValues[4].ifEmpty { match.groupValues[5] }).lowercase()
         operators.add(SearchOperator(negated, key, value))
-        remaining = remaining.replace(match.value, "")
     }
+    val remaining = OPERATOR_REGEX.replace(raw, " ")
 
     return ParsedQuery(
         free_text = remaining.trim().lowercase(),
