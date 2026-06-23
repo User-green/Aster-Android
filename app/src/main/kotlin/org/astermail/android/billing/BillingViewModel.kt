@@ -135,6 +135,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun start_checkout(plan_code: String, billing_interval: String = "month", currency: String? = null) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "checkout_$plan_code", error = null, checkout_url = null)
             try {
@@ -158,6 +159,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun open_portal() {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "portal", error = null, portal_url = null)
             try {
@@ -209,6 +211,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun reactivate_subscription() {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "reactivate", error = null, info = null)
             try {
@@ -226,6 +229,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun switch_billing(billing_interval: String) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "switch", error = null, info = null)
             try {
@@ -249,6 +253,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun start_crypto_checkout(plan_code: String, term_months: Int) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "crypto_$plan_code", error = null, checkout_url = null)
             try {
@@ -266,6 +271,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun purchase_addon_crypto(addon_id: String, term_months: Int) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "crypto_addon_$addon_id", error = null, checkout_url = null)
             try {
@@ -292,6 +298,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun purchase_storage_addon(addon_id: String) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "addon_$addon_id", error = null, checkout_url = null)
             try {
@@ -341,6 +348,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun set_default_payment_method(payment_method_id: String) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "set_default_$payment_method_id")
             try {
@@ -364,6 +372,7 @@ class BillingViewModel @Inject constructor(
     }
 
     fun detach_payment_method(payment_method_id: String) {
+        if (_state.value.is_acting) return
         viewModelScope.launch {
             _state.value = _state.value.copy(is_acting = true, acting_action = "detach_$payment_method_id")
             try {
