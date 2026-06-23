@@ -87,7 +87,7 @@ class ChangePasswordViewModel @Inject constructor(
             _state.value = s.copy(error = context.getString(R.string.enter_current_password))
             return
         }
-        if (s.new_password.length < 8) {
+        if (s.new_password.length < 12) {
             _state.value = s.copy(error = context.getString(R.string.new_password_min_length))
             return
         }

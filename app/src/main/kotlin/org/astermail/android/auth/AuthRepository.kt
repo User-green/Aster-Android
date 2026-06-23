@@ -112,18 +112,23 @@ class AuthRepository @Inject constructor(
             // The access token has likely expired. Ktor's bearer auth only
             // auto-refreshes on a 401 carrying a WWW-Authenticate challenge,
             // which the backend does not send, so we refresh explicitly before
-            // giving up. Only sign out if the refresh itself fails.
-            if (try_refresh_session()) {
-                try {
-                    auth_api.me()
-                } catch (e2: CancellationException) {
-                    throw e2
-                } catch (e2: ApiError.UnauthorizedError) {
-                    logout()
-                } catch (_: Throwable) {
+            // giving up. Only sign out if the refresh fails *definitively*
+            // (the backend rejects the refresh token); a transient network
+            // failure must not sign the user out.
+            when (try_refresh_session()) {
+                RefreshOutcome.Success -> {
+                    try {
+                        auth_api.me()
+                    } catch (e2: CancellationException) {
+                        throw e2
+                    } catch (e2: ApiError.UnauthorizedError) {
+                        logout()
+                    } catch (_: Throwable) {
+                    }
                 }
-            } else {
-                logout()
+                RefreshOutcome.AuthFailed -> logout()
+                RefreshOutcome.Transient -> {
+                }
             }
         } catch (_: Throwable) {
         } finally {
@@ -131,18 +136,24 @@ class AuthRepository @Inject constructor(
         }
     }
 
-    private suspend fun try_refresh_session(): Boolean {
+    private enum class RefreshOutcome { Success, AuthFailed, Transient }
+
+    private suspend fun try_refresh_session(): RefreshOutcome {
         return try {
-            val current_refresh = token_store.refresh_token ?: return false
+            val current_refresh = token_store.refresh_token ?: return RefreshOutcome.AuthFailed
             val response = auth_api.refresh(current_refresh)
             val new_refresh = response.refresh_token ?: current_refresh
             token_store.save(response.access_token, new_refresh)
             api_client.invalidate_bearer_cache()
-            true
+            RefreshOutcome.Success
         } catch (e: CancellationException) {
             throw e
+        } catch (e: ApiError.UnauthorizedError) {
+            RefreshOutcome.AuthFailed
+        } catch (e: ApiError.ForbiddenError) {
+            RefreshOutcome.AuthFailed
         } catch (_: Throwable) {
-            false
+            RefreshOutcome.Transient
         }
     }
 
@@ -290,6 +301,7 @@ class AuthRepository @Inject constructor(
         )
         runCatching { save_session_snapshot(login_resp.user_id) }
         _is_signed_in.value = true
+        runCatching { UnifiedPushState.clear_backend_registration(context) }
         runCatching { UnifiedPushState.try_register(context) }
     }
 
@@ -392,6 +404,7 @@ class AuthRepository @Inject constructor(
         )
         save_session_snapshot(register_resp.user_id)
         _is_signed_in.value = true
+        runCatching { UnifiedPushState.clear_backend_registration(context) }
         runCatching { UnifiedPushState.try_register(context) }
         RegisterSuccess(recovery = recovery)
     }
@@ -452,7 +465,7 @@ class AuthRepository @Inject constructor(
     fun has_stored_session(account_id: String): Boolean = session_snapshot_store.has(account_id)
 
     suspend fun change_password(current_password: String, new_password: String): Result<Unit> = runCatching {
-        require(new_password.length >= 8) { "new password must be at least 8 characters" }
+        require(new_password.length >= 12) { "new password must be at least 12 characters" }
         require(new_password.length <= 128) { "new password must be at most 128 characters" }
 
         val current_password_bytes = current_password.toByteArray(Charsets.UTF_8)

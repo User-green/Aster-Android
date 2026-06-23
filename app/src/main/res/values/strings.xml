@@ -1409,7 +1409,7 @@
         <item quantity="other">%d new messages</item>
     </plurals>
     <string name="enter_current_password">Enter your current password</string>
-    <string name="new_password_min_length">New password must be at least 8 characters</string>
+    <string name="new_password_min_length">New password must be at least 12 characters</string>
     <string name="new_password_max_length">New password must be at most 128 characters</string>
     <string name="new_password_mismatch">New password and confirmation do not match</string>
     <string name="new_password_must_differ">New password must be different from current password</string>

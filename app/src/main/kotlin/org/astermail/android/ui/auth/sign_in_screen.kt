@@ -360,6 +360,11 @@ private fun TotpVerifyScreen(
     val is_loading = state is AuthUiState.Loading
     val error_message = (state as? AuthUiState.Error)?.message
     val code_focus = remember { FocusRequester() }
+    val code_ready = if (use_backup) {
+        code.count { it.isLetterOrDigit() } >= 12
+    } else {
+        code.length >= 6
+    }
 
     LaunchedEffect(Unit) {
         code_focus.requestFocus()
@@ -432,7 +437,7 @@ private fun TotpVerifyScreen(
                     ),
                     keyboard_actions = KeyboardActions(
                         onDone = {
-                            if (code.length >= 6 && !is_loading) {
+                            if (code_ready && !is_loading) {
                                 view_model.submit_totp(code, challenge, trust_device)
                             }
                         },
@@ -476,7 +481,7 @@ private fun TotpVerifyScreen(
                 AsterButton(
                     label = stringResource(R.string.totp_verify_button),
                     onClick = { view_model.submit_totp(code, challenge, trust_device) },
-                    enabled = (if (use_backup) code.length >= 6 else code.length >= 6) && !is_loading,
+                    enabled = code_ready && !is_loading,
                     is_loading = is_loading,
                 )
 
