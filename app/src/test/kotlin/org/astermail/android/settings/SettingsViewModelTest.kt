@@ -446,7 +446,7 @@ class SettingsViewModelTest {
     @Test
     fun `load_forwarding_rules populates list`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
 
@@ -460,7 +460,7 @@ class SettingsViewModelTest {
     @Test
     fun `toggle_forwarding_rule updates enabled state`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
 
@@ -477,8 +477,8 @@ class SettingsViewModelTest {
     @Test
     fun `delete_forwarding_rule removes from list`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd1@gmail.com", enabled = true),
-            ForwardingRule(id = "r2", target_address = "fwd2@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd1@gmail.com"), is_enabled = true),
+            ForwardingRule(id = "r2", forward_to = listOf("fwd2@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
 
@@ -1035,7 +1035,7 @@ class SettingsViewModelTest {
     @Test
     fun `create_forwarding_rule success updates save status and reloads`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
 
@@ -1061,7 +1061,7 @@ class SettingsViewModelTest {
     @Test
     fun `toggle_forwarding_rule error does not change state`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
         coEvery { auto_forward_api.toggle_rule(any()) } throws RuntimeException("error")
@@ -1078,7 +1078,7 @@ class SettingsViewModelTest {
     @Test
     fun `toggle_forwarding_rule nonexistent id is harmless`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
 
@@ -1095,7 +1095,7 @@ class SettingsViewModelTest {
     @Test
     fun `delete_forwarding_rule error does not modify list`() = runTest {
         val rules = listOf(
-            ForwardingRule(id = "r1", target_address = "fwd@gmail.com", enabled = true),
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@gmail.com"), is_enabled = true),
         )
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(rules)
         coEvery { auto_forward_api.delete_rule(any()) } throws RuntimeException("error")
@@ -1388,7 +1388,7 @@ class SettingsViewModelTest {
         var status_during_request = SaveStatus.IDLE
         coEvery { auto_forward_api.create_rule(any()) } coAnswers {
             status_during_request = vm.state.value.save_status
-            ForwardingRule(id = "r1", target_address = "fwd@test.com", enabled = true)
+            ForwardingRule(id = "r1", forward_to = listOf("fwd@test.com"), is_enabled = true)
         }
         coEvery { auto_forward_api.list_rules() } returns ForwardingRulesResponse(emptyList())
 

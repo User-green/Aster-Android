@@ -1891,7 +1891,11 @@ class SettingsViewModel @Inject constructor(
             _state.value = _state.value.copy(save_status = SaveStatus.SAVING)
             try {
                 auto_forward_api.create_rule(
-                    CreateForwardingRuleRequest(target_address = target, keep_copy = keep_copy),
+                    CreateForwardingRuleRequest(
+                        name = target.take(200),
+                        forward_to = listOf(target),
+                        keep_copy = keep_copy,
+                    ),
                 )
                 _state.value = _state.value.copy(save_status = SaveStatus.SAVED)
                 load_forwarding_rules()
@@ -1904,13 +1908,15 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun update_forwarding_rule(target: String, keep_copy: Boolean) {
+    fun update_forwarding_rule(rule_id: String, target: String, keep_copy: Boolean) {
         viewModelScope.launch {
             _state.value = _state.value.copy(save_status = SaveStatus.SAVING)
             try {
                 auto_forward_api.update_rule(
                     org.astermail.android.api.autoforward.UpdateForwardingRuleRequest(
-                        target_address = target,
+                        id = rule_id,
+                        name = target.take(200),
+                        forward_to = listOf(target),
                         keep_copy = keep_copy,
                     ),
                 )
@@ -1926,19 +1932,24 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun toggle_forwarding_rule(rule_id: String, enabled: Boolean) {
+        val previous = _state.value.forwarding_rules
+        _state.update { s ->
+            s.copy(
+                forwarding_rules = s.forwarding_rules.map {
+                    if (it.id == rule_id) it.copy(is_enabled = enabled) else it
+                },
+            )
+        }
         viewModelScope.launch {
             try {
                 auto_forward_api.toggle_rule(
-                    ToggleForwardingRuleRequest(id = rule_id, enabled = enabled),
+                    ToggleForwardingRuleRequest(id = rule_id, is_enabled = enabled),
                 )
-                _state.update { s ->
-                    s.copy(
-                        forwarding_rules = s.forwarding_rules.map {
-                            if (it.id == rule_id) it.copy(enabled = enabled) else it
-                        },
-                    )
-                }
-            } catch (_: Throwable) {
+            } catch (t: Throwable) {
+                _state.update { s -> s.copy(forwarding_rules = previous) }
+                _state.value = _state.value.copy(
+                    error = t.message ?: context.getString(R.string.something_went_wrong),
+                )
             }
         }
     }

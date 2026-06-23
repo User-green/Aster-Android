@@ -263,8 +263,8 @@ class ApiErrorTest {
     fun `ForwardingRule with all fields`() {
         val rule = ForwardingRule(
             id = "fr1",
-            target_address = "backup@example.com",
-            enabled = false,
+            forward_to = listOf("backup@example.com"),
+            is_enabled = false,
             keep_copy = false,
             created_at = "2026-04-01T00:00:00Z",
         )
@@ -276,8 +276,8 @@ class ApiErrorTest {
 
     @Test
     fun `ForwardingRule copy`() {
-        val original = ForwardingRule(id = "fr1", target_address = "a@b.c")
-        val copied = original.copy(enabled = false)
+        val original = ForwardingRule(id = "fr1", forward_to = listOf("a@b.c"))
+        val copied = original.copy(is_enabled = false)
         assertFalse(copied.enabled)
         assertEquals("fr1", copied.id)
     }
@@ -297,36 +297,36 @@ class ApiErrorTest {
 
     @Test
     fun `CreateForwardingRuleRequest defaults`() {
-        val request = CreateForwardingRuleRequest(target_address = "fwd@example.com")
-        assertEquals("fwd@example.com", request.target_address)
+        val request = CreateForwardingRuleRequest(name = "fwd@example.com", forward_to = listOf("fwd@example.com"))
+        assertEquals(listOf("fwd@example.com"), request.forward_to)
         assertTrue(request.keep_copy)
     }
 
     @Test
     fun `CreateForwardingRuleRequest no keep_copy`() {
-        val request = CreateForwardingRuleRequest(target_address = "x@y.z", keep_copy = false)
+        val request = CreateForwardingRuleRequest(name = "x@y.z", forward_to = listOf("x@y.z"), keep_copy = false)
         assertFalse(request.keep_copy)
     }
 
     @Test
     fun `UpdateForwardingRuleRequest defaults all null`() {
-        val request = UpdateForwardingRuleRequest()
-        assertNull(request.target_address)
+        val request = UpdateForwardingRuleRequest(id = "r1")
+        assertNull(request.forward_to)
         assertNull(request.keep_copy)
     }
 
     @Test
     fun `UpdateForwardingRuleRequest with values`() {
-        val request = UpdateForwardingRuleRequest(target_address = "new@addr.com", keep_copy = false)
-        assertEquals("new@addr.com", request.target_address)
+        val request = UpdateForwardingRuleRequest(id = "r1", forward_to = listOf("new@addr.com"), keep_copy = false)
+        assertEquals(listOf("new@addr.com"), request.forward_to)
         assertFalse(request.keep_copy!!)
     }
 
     @Test
     fun `ToggleForwardingRuleRequest stores fields`() {
-        val request = ToggleForwardingRuleRequest(id = "fr1", enabled = false)
+        val request = ToggleForwardingRuleRequest(id = "fr1", is_enabled = false)
         assertEquals("fr1", request.id)
-        assertFalse(request.enabled)
+        assertFalse(request.is_enabled)
     }
 
     @Test

@@ -29,21 +29,27 @@ import io.ktor.client.request.patch
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
+import io.ktor.client.request.url
 import io.ktor.client.statement.HttpResponse
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 import org.astermail.android.api.ApiClient
 import org.astermail.android.api.ApiError
 
 @Serializable
 data class ForwardingRule(
     val id: String = "",
-    val target_address: String = "",
-    val enabled: Boolean = true,
+    val name: String = "",
+    val is_enabled: Boolean = true,
+    val forward_to: List<String> = emptyList(),
     val keep_copy: Boolean = true,
     val created_at: String? = null,
-)
+) {
+    val target_address: String get() = forward_to.firstOrNull().orEmpty()
+    val enabled: Boolean get() = is_enabled
+}
 
 @Serializable
 data class ForwardingRulesResponse(
@@ -52,20 +58,26 @@ data class ForwardingRulesResponse(
 
 @Serializable
 data class CreateForwardingRuleRequest(
-    val target_address: String,
+    val name: String,
+    val forward_to: List<String>,
+    val conditions: List<JsonObject> = emptyList(),
     val keep_copy: Boolean = true,
+    val priority: Int = 0,
 )
 
 @Serializable
 data class UpdateForwardingRuleRequest(
-    val target_address: String? = null,
+    val id: String,
+    val name: String? = null,
+    val forward_to: List<String>? = null,
     val keep_copy: Boolean? = null,
+    val is_enabled: Boolean? = null,
 )
 
 @Serializable
 data class ToggleForwardingRuleRequest(
     val id: String,
-    val enabled: Boolean,
+    val is_enabled: Boolean,
 )
 
 interface AutoForwardApi {
@@ -117,9 +129,8 @@ class AutoForwardApiImpl(private val client: ApiClient) : AutoForwardApi {
 
     override suspend fun delete_rule(rule_id: String) {
         val response = client.http.delete("${client.base_url}$base") {
-            contentType(ContentType.Application.Json)
+            url { parameters.append("id", rule_id) }
             client.get_csrf()?.let { header("X-CSRF-Token", it) }
-            setBody(mapOf("id" to rule_id))
         }
         if (response.status.value !in 200..299) {
             throw client.map_http_status(response.status.value, "")

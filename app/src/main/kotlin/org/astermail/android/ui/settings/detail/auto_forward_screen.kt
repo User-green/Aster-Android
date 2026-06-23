@@ -190,8 +190,9 @@ fun AutoForwardScreen(
             AsterButton(
                 label = if (active_rule != null) stringResource(R.string.save) else stringResource(R.string.create_rule),
                 onClick = {
-                    if (active_rule != null) {
-                        vm.update_forwarding_rule(target, keep_copy)
+                    val rule = active_rule
+                    if (rule != null) {
+                        vm.update_forwarding_rule(rule.id, target, keep_copy)
                     } else {
                         vm.create_forwarding_rule(target, keep_copy)
                     }
