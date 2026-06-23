@@ -1675,13 +1675,13 @@ private fun compact_banner_action(
                 else Modifier.border(1.dp, colors.border_secondary, SquircleShape(999.dp)),
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp),
+            .padding(horizontal = 10.dp, vertical = 4.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = label,
             color = if (primary) Color.White else colors.accent_blue,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
         )
@@ -1700,22 +1700,22 @@ private fun compact_banner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = AsterSpacing.md, vertical = AsterSpacing.xs)
-            .clip(SquircleShape(14.dp))
+            .clip(SquircleShape(12.dp))
             .background(colors.bg_secondary)
-            .padding(horizontal = AsterSpacing.md, vertical = 8.dp),
+            .padding(horizontal = AsterSpacing.sm, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
             tint = colors.text_secondary,
-            modifier = Modifier.size(16.dp),
+            modifier = Modifier.size(14.dp),
         )
         Spacer(Modifier.width(AsterSpacing.sm))
         Text(
             text = label,
             color = colors.text_secondary,
-            fontSize = 12.sp,
+            fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             maxLines = if (expanded) 6 else 1,
             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
