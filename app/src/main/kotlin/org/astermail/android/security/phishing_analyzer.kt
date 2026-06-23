@@ -118,7 +118,8 @@ private fun check_display_name_spoof(sender_name: String, sender_email: String):
     val sender_domain = sender_email.substringAfter('@', "").lowercase()
 
     for ((brand, legit_domains) in BRAND_DISPLAY_NAMES) {
-        if (brand in lower_name) {
+        val brand_pattern = Regex("\\b" + Regex.escape(brand) + "\\b")
+        if (brand_pattern.containsMatchIn(lower_name)) {
             val is_legit = legit_domains.any { d -> sender_domain == d || sender_domain.endsWith(".$d") }
             if (!is_legit) {
                 out += PhishingSignal(
