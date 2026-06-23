@@ -223,6 +223,7 @@ fun InboxScreen(
             top_toast_state = current.copy(
                 message = ba.message,
                 on_undo = { ba.on_undo(); mail_vm.clear_batch_action(ba.action_key) },
+                key = System.currentTimeMillis(),
             )
         } else {
             top_toast_state = org.astermail.android.ui.common.TopToastState(
