@@ -54,7 +54,9 @@ impl AsterByteBuffer {
 pub extern "C" fn aster_buffer_free(buf: AsterByteBuffer) {
     if !buf.data.is_null() {
         unsafe {
-            let _ = Vec::from_raw_parts(buf.data, buf.len, buf.cap);
+            let mut v = Vec::from_raw_parts(buf.data, buf.len, buf.cap);
+            v.zeroize();
+            drop(v);
         }
     }
 }
