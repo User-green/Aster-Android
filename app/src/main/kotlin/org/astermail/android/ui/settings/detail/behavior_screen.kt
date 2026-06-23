@@ -237,6 +237,7 @@ fun BehaviorScreen(
         if (loaded_signature == null || prefs == null) return@LaunchedEffect
         delay(400)
         save()
+        save_trigger = 0
     }
 
     DisposableEffect(Unit) {
