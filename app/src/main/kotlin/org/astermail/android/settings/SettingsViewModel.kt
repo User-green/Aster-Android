@@ -2047,8 +2047,10 @@ class SettingsViewModel @Inject constructor(
             kotlinx.coroutines.runBlocking {
                 val current_refresh = token_store.refresh_token
                 val response = auth_api.refresh(current_refresh)
-                val new_refresh = response.refresh_token ?: current_refresh ?: response.access_token
-                token_store.save(response.access_token, new_refresh)
+                val new_refresh = response.refresh_token ?: current_refresh
+                if (new_refresh != null) {
+                    token_store.save(response.access_token, new_refresh)
+                }
                 response.access_token
             }
         } catch (_: Throwable) {
