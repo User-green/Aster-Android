@@ -357,9 +357,10 @@ class SettingsViewModel @Inject constructor(
         _state.value = _state.value.copy(action_result = null)
     }
 
-    fun logout() {
+    fun logout(on_done: () -> Unit = {}) {
         viewModelScope.launch {
             auth_repository.logout()
+            on_done()
         }
     }
 
@@ -870,7 +871,7 @@ class SettingsViewModel @Inject constructor(
                     _state.update { st ->
                         st.copy(
                             hardware_keys = st.hardware_keys.map { k ->
-                                if (k.id == key_id) k.copy(name = resp.name_encrypted) else k
+                                if (k.id == key_id) k.copy(name = name.trim()) else k
                             },
                             action_result = context.getString(R.string.hardware_key_renamed),
                         )

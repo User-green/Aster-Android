@@ -1340,16 +1340,17 @@ private fun InboxWithDrawer(nav_controller: NavHostController) {
                     settings_vm.create_folder(name = name, sort_order = api_folders.size)
                 },
                 on_logout = {
-                    settings_vm.logout()
-                    accounts_vm.refresh()
-                    val next = accounts_vm.state.value.accounts.firstOrNull()
-                    if (next != null) {
-                        nav_controller.navigate(routes.sign_in_for(next.email)) {
-                            popUpTo(0) { inclusive = true }
-                        }
-                    } else {
-                        nav_controller.navigate(routes.welcome) {
-                            popUpTo(0) { inclusive = true }
+                    settings_vm.logout {
+                        accounts_vm.refresh()
+                        val next = accounts_vm.state.value.accounts.firstOrNull()
+                        if (next != null) {
+                            nav_controller.navigate(routes.sign_in_for(next.email)) {
+                                popUpTo(0) { inclusive = true }
+                            }
+                        } else {
+                            nav_controller.navigate(routes.welcome) {
+                                popUpTo(0) { inclusive = true }
+                            }
                         }
                     }
                 },

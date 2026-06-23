@@ -64,7 +64,7 @@ data class HardwareKeysResponse(
 
 @Serializable
 data class RenameHardwareKeyRequest(
-    val name_encrypted: String,
+    val friendly_name: String,
 )
 
 @Serializable
@@ -153,7 +153,7 @@ class SecurityApiImpl(private val client: ApiClient) : SecurityApi {
         val response = client.http.put("${client.base_url}$base/auth/hardware-keys/$key_id") {
             contentType(ContentType.Application.Json)
             client.get_csrf()?.let { header("X-CSRF-Token", it) }
-            setBody(RenameHardwareKeyRequest(name_encrypted = name))
+            setBody(RenameHardwareKeyRequest(friendly_name = name))
         }
         return decode_or_throw(response)
     }
