@@ -379,6 +379,16 @@ fun header_value_picker(
     }
 }
 
+private fun single_decimal(v: String): String {
+    val filtered = v.filter { it.isDigit() || it == '.' }
+    val dot = filtered.indexOf('.')
+    return if (dot >= 0) {
+        filtered.substring(0, dot + 1) + filtered.substring(dot + 1).replace(".", "")
+    } else {
+        filtered
+    }
+}
+
 @Composable
 fun numeric_value_picker(
     on_dismiss: () -> Unit,
@@ -387,14 +397,25 @@ fun numeric_value_picker(
     is_size: Boolean,
     on_confirm: (Long) -> Unit,
 ) {
-    var value by remember { mutableStateOf(initial.toString()) }
-    var unit by remember { mutableStateOf(if (is_size) "MB" else "") }
+    val (init_value, init_unit) = remember(initial, is_size) {
+        if (is_size && initial > 0) {
+            when {
+                initial % (1024L * 1024L * 1024L) == 0L -> (initial / (1024L * 1024L * 1024L)).toString() to "GB"
+                initial % (1024L * 1024L) == 0L -> (initial / (1024L * 1024L)).toString() to "MB"
+                else -> (initial / 1024L).coerceAtLeast(1L).toString() to "KB"
+            }
+        } else {
+            initial.toString() to if (is_size) "MB" else ""
+        }
+    }
+    var value by remember { mutableStateOf(init_value) }
+    var unit by remember { mutableStateOf(init_unit) }
     val colors = AsterMaterial.colors
     base_sheet(on_dismiss = on_dismiss, title = title) {
         Column(modifier = Modifier.padding(horizontal = AsterSpacing.lg)) {
             AsterTextField(
                 value = value,
-                onValueChange = { v -> value = v.filter { it.isDigit() || it == '.' } },
+                onValueChange = { v -> value = single_decimal(v) },
                 placeholder = "0",
                 modifier = Modifier.testTag("numeric_input"),
             )
@@ -459,7 +480,7 @@ fun decimal_value_picker(
         Column(modifier = Modifier.padding(horizontal = AsterSpacing.lg)) {
             AsterTextField(
                 value = value,
-                onValueChange = { v -> value = v.filter { it.isDigit() || it == '.' } },
+                onValueChange = { v -> value = single_decimal(v) },
                 placeholder = "0.0",
                 modifier = Modifier.testTag("decimal_input"),
             )
