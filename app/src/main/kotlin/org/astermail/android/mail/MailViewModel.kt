@@ -824,6 +824,8 @@ class MailViewModel @Inject constructor(
 
     fun apply_label(item_id: String, label_token: String, display_name: String) {
         if (item_id == DEMO_PHISH_ITEM_ID) return
+        val prev_inbox_labels = _inbox_state.value.items.find { it.id == item_id }?.labels
+        val prev_thread_labels = _thread_state.value.item?.takeIf { it.id == item_id }?.labels
         _inbox_state.value = _inbox_state.value.copy(
             items = _inbox_state.value.items.map {
                 if (it.id == item_id) it.copy(labels = (it.labels + label_token).distinct()) else it
@@ -841,13 +843,28 @@ class MailViewModel @Inject constructor(
                     invalidate_caches(listOf("label:$label_token"))
                     emit_toast(context.getString(R.string.added_to_label, display_name))
                 },
-                onFailure = { emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label)) },
+                onFailure = {
+                    if (prev_inbox_labels != null) {
+                        _inbox_state.value = _inbox_state.value.copy(
+                            items = _inbox_state.value.items.map {
+                                if (it.id == item_id) it.copy(labels = prev_inbox_labels) else it
+                            },
+                        )
+                    }
+                    val th = _thread_state.value
+                    if (prev_thread_labels != null && th.item?.id == item_id) {
+                        _thread_state.value = th.copy(item = th.item.copy(labels = prev_thread_labels))
+                    }
+                    emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label))
+                },
             )
         }
     }
 
     fun apply_tag(item_id: String, tag_token: String, display_name: String) {
         if (item_id == DEMO_PHISH_ITEM_ID) return
+        val prev_inbox_item = _inbox_state.value.items.find { it.id == item_id }
+        val prev_thread_item = _thread_state.value.item?.takeIf { it.id == item_id }
         _inbox_state.value = _inbox_state.value.copy(
             items = _inbox_state.value.items.map {
                 if (it.id == item_id) {
@@ -872,7 +889,20 @@ class MailViewModel @Inject constructor(
         viewModelScope.launch {
             repository.add_tag_to_item(item_id, tag_token).fold(
                 onSuccess = { emit_toast(context.getString(R.string.added_to_label, display_name)) },
-                onFailure = { emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label)) },
+                onFailure = {
+                    if (prev_inbox_item != null) {
+                        _inbox_state.value = _inbox_state.value.copy(
+                            items = _inbox_state.value.items.map {
+                                if (it.id == item_id) prev_inbox_item else it
+                            },
+                        )
+                    }
+                    val th = _thread_state.value
+                    if (prev_thread_item != null && th.item?.id == item_id) {
+                        _thread_state.value = th.copy(item = prev_thread_item)
+                    }
+                    emit_toast(it.message ?: context.getString(R.string.couldnt_apply_label))
+                },
             )
         }
     }
