@@ -118,7 +118,8 @@ class SearchIndexManager @Inject constructor(
             val existing_ids = dao.get_all_ids().toHashSet()
             var cursor: String? = null
             val max_pages = 20
-            repeat(max_pages) { page ->
+            var page = 0
+            while (page < max_pages) {
                 val response = mail_api.list_messages(limit = 50, cursor = cursor, item_type = "received")
                 val new_items = response.items.filter { it.id !in existing_ids }
                 if (new_items.isNotEmpty()) {
@@ -126,8 +127,9 @@ class SearchIndexManager @Inject constructor(
                     cache_items(decrypted, my_epoch)
                     new_items.forEach { existing_ids.add(it.id) }
                 }
-                if (!response.has_more || response.next_cursor == null) return@repeat
+                if (!response.has_more || response.next_cursor == null) break
                 cursor = response.next_cursor
+                page++
             }
             if (epoch.get() == my_epoch) _index_ready.value = true
         } catch (_: Throwable) {
