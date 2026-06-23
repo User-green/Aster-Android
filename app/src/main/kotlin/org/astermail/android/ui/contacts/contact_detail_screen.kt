@@ -139,7 +139,7 @@ fun ContactDetailScreen(
                 onClick = {
                     is_favorite = !is_favorite
                     contact?.let { c ->
-                        vm.save_contact(c.copy(is_favorite = !c.is_favorite), c.id)
+                        vm.save_contact(c.copy(is_favorite = is_favorite), c.id)
                     }
                 },
                 tint = if (is_favorite) colors.warning else Color.Unspecified,
