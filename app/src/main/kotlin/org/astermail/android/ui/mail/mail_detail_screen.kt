@@ -284,7 +284,11 @@ fun MailDetailScreen(
 
     LaunchedEffect(email_id) {
         mail_vm.load_thread(email_id)
-        val delay_ms = when (settings_state.preferences?.mark_as_read) {
+    }
+
+    LaunchedEffect(email_id, settings_state.preferences) {
+        val prefs = settings_state.preferences ?: return@LaunchedEffect
+        val delay_ms = when (prefs.mark_as_read) {
             "immediate" -> 0L
             "3_seconds" -> 3000L
             "never" -> return@LaunchedEffect
