@@ -22,7 +22,6 @@
 package org.astermail.android.ui.mail
 
 import androidx.compose.ui.graphics.Color
-import kotlin.math.absoluteValue
 
 private val avatar_palette: List<Pair<Color, Color>> = listOf(
     Color(0xFF3B82F6) to Color.White,
@@ -39,7 +38,7 @@ private val avatar_palette: List<Pair<Color, Color>> = listOf(
 
 fun avatar_colors_for(seed: String): Pair<Color, Color> {
     if (seed.isEmpty()) return avatar_palette[0]
-    val idx = (seed.hashCode().absoluteValue) % avatar_palette.size
+    val idx = (seed.hashCode() % avatar_palette.size + avatar_palette.size) % avatar_palette.size
     return avatar_palette[idx]
 }
 
