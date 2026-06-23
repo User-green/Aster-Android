@@ -58,6 +58,18 @@ fun detect_unsubscribe_info(
     text_content: String? = null,
 ): UnsubscribeInfo {
     if (html_content != null) {
+        val anchor_match = ANCHOR_UNSUBSCRIBE.find(html_content)
+        if (anchor_match != null) {
+            val href_match = HREF_EXTRACT.find(anchor_match.value)
+            if (href_match != null && is_valid_url(href_match.groupValues[1])) {
+                return UnsubscribeInfo(
+                    has_unsubscribe = true,
+                    unsubscribe_link = href_match.groupValues[1],
+                    method = "link",
+                )
+            }
+        }
+
         for (pattern in UNSUBSCRIBE_LINK_PATTERNS) {
             val match = pattern.find(html_content)
             if (match != null) {
@@ -69,18 +81,6 @@ fun detect_unsubscribe_info(
                         method = "link",
                     )
                 }
-            }
-        }
-
-        val anchor_match = ANCHOR_UNSUBSCRIBE.find(html_content)
-        if (anchor_match != null) {
-            val href_match = HREF_EXTRACT.find(anchor_match.value)
-            if (href_match != null && is_valid_url(href_match.groupValues[1])) {
-                return UnsubscribeInfo(
-                    has_unsubscribe = true,
-                    unsubscribe_link = href_match.groupValues[1],
-                    method = "link",
-                )
             }
         }
     }
