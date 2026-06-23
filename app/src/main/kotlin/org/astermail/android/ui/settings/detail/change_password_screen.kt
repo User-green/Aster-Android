@@ -114,7 +114,7 @@ fun ChangePasswordScreen(
             onClick = { view_model.submit() },
             enabled = !state.is_submitting &&
                 state.current_password.isNotBlank() &&
-                state.new_password.length >= 8 &&
+                state.new_password.length >= 12 &&
                 state.new_password == state.confirm_password,
         )
         v_gap(AsterSpacing.lg)
