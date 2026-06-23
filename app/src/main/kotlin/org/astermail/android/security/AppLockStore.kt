@@ -170,7 +170,7 @@ class AppLockStore @Inject constructor(@ApplicationContext private val context: 
 
     private fun record_failed_attempt() {
         val count = prefs.getInt(KEY_LOCKOUT_COUNT, 0) + 1
-        val over = count - MAX_ATTEMPTS
+        val over = (count - MAX_ATTEMPTS).coerceAtMost(20)
         val lockout_ms = if (over >= 0) {
             minOf(BASE_LOCKOUT_MS shl over, MAX_LOCKOUT_MS)
         } else 0L
