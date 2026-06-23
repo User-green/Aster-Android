@@ -178,11 +178,13 @@ class ImportViewModel @Inject constructor(
             return
         }
         val total_chunks = ((total_size + CHUNK_SIZE - 1) / CHUNK_SIZE).toInt().coerceAtLeast(1)
-        _state.value = ImportUiState(
+        _state.value = _state.value.copy(
             is_uploading = true,
             current_chunk = 0,
             total_chunks = total_chunks,
             file_name = file_name,
+            error = null,
+            job_created = false,
         )
         viewModelScope.launch {
             try {
@@ -379,21 +381,24 @@ fun ImportScreen(
         scope.launch {
             vm.start_import(uri, final_name, final_size) { offset, len ->
                 val bytes = ByteArray(len)
-                resolver.openInputStream(uri)?.use { stream ->
+                val stream = resolver.openInputStream(uri)
+                    ?: throw java.io.IOException("cannot open import stream")
+                var read = 0
+                stream.use { s ->
                     var remaining = offset
                     val skip_buf = ByteArray(8192)
                     while (remaining > 0) {
-                        val n = stream.read(skip_buf, 0, minOf(skip_buf.size.toLong(), remaining).toInt())
+                        val n = s.read(skip_buf, 0, minOf(skip_buf.size.toLong(), remaining).toInt())
                         if (n <= 0) break
                         remaining -= n
                     }
-                    var read = 0
                     while (read < len) {
-                        val n = stream.read(bytes, read, len - read)
+                        val n = s.read(bytes, read, len - read)
                         if (n <= 0) break
                         read += n
                     }
                 }
+                if (read < len) throw java.io.IOException("short read: expected $len, got $read")
                 bytes
             }
         }
