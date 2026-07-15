@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.Domain
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.KeyboardArrowRight
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
@@ -717,6 +718,8 @@ private fun directories_tab(
     var is_creating by remember { mutableStateOf(false) }
     var dir_availability by remember { mutableStateOf<Boolean?>(null) }
     var dir_checking by remember { mutableStateOf(false) }
+    var dir_search by remember { mutableStateOf("") }
+    var pending_delete_dir by remember { mutableStateOf<Pair<String, String>?>(null) }
     val separators = listOf(".", "+", "#")
     val key_valid = dir_key.matches(Regex("[a-z0-9-]{2,}"))
 
@@ -824,6 +827,7 @@ private fun directories_tab(
                 is_creating = false
                 if (ok) {
                     dir_key = ""
+                    dir_search = ""
                     captcha_token = null
                     captcha_reset++
                 }
@@ -832,6 +836,20 @@ private fun directories_tab(
         modifier = Modifier.fillMaxWidth(),
     )
     v_gap(AsterSpacing.lg)
+
+    if (state.directories.isNotEmpty()) {
+        section_label(stringResource(R.string.directories_count, state.directories.size))
+        v_gap(AsterSpacing.xs)
+        OutlinedTextField(
+            value = dir_search,
+            onValueChange = { dir_search = it },
+            label = { Text(stringResource(R.string.search_directories)) },
+            leadingIcon = { Icon(Icons.Outlined.Search, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+        )
+        v_gap(AsterSpacing.sm)
+    }
 
     if (state.directories_loading && state.directories.isEmpty()) {
         Box(
@@ -848,46 +866,80 @@ private fun directories_tab(
             )
         }
     } else {
-        AsterCard(modifier = Modifier.fillMaxWidth()) {
-            state.directories.forEachIndexed { idx, dir ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.sm),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        val label = dir.decrypted_label.ifBlank { "…" }
-                        Text(
-                            text = "anything.${label}@${dir.domain}",
-                            color = colors.text_primary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.SemiBold,
+        val visible_dirs = state.directories
+            .sortedByDescending { it.auto_create_enabled }
+            .filter {
+                dir_search.isBlank() ||
+                    it.decrypted_label.contains(dir_search, ignoreCase = true) ||
+                    it.domain.contains(dir_search, ignoreCase = true)
+            }
+        if (visible_dirs.isEmpty()) {
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                detail_row(title = stringResource(R.string.no_directories_match))
+            }
+        } else {
+            AsterCard(modifier = Modifier.fillMaxWidth()) {
+                visible_dirs.forEachIndexed { idx, dir ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = AsterSpacing.lg, vertical = AsterSpacing.sm),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            val label = dir.decrypted_label.ifBlank { "…" }
+                            Text(
+                                text = "anything.${label}@${dir.domain}",
+                                color = colors.text_primary,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = stringResource(R.string.alias_separator_hint),
+                                color = colors.text_tertiary,
+                                fontSize = 12.sp,
+                            )
+                        }
+                        Switch(
+                            checked = dir.auto_create_enabled,
+                            onCheckedChange = { vm.toggle_directory_auto_create(dir.id) },
+                            colors = SwitchDefaults.colors(
+                                checkedTrackColor = colors.accent_blue,
+                                uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
+                            ),
                         )
-                        Text(
-                            text = stringResource(R.string.alias_separator_hint),
-                            color = colors.text_tertiary,
-                            fontSize = 12.sp,
+                        AsterIconButton(
+                            icon = Icons.Outlined.Delete,
+                            content_description = stringResource(R.string.alias_delete_directory),
+                            onClick = {
+                                val label = dir.decrypted_label.ifBlank { "…" }
+                                pending_delete_dir = dir.id to "anything.${label}@${dir.domain}"
+                            },
+                            tint = colors.danger,
                         )
                     }
-                    Switch(
-                        checked = dir.auto_create_enabled,
-                        onCheckedChange = { vm.toggle_directory_auto_create(dir.id) },
-                        colors = SwitchDefaults.colors(
-                            checkedTrackColor = colors.accent_blue,
-                            uncheckedTrackColor = colors.text_muted.copy(alpha = 0.35f),
-                        ),
-                    )
-                    AsterIconButton(
-                        icon = Icons.Outlined.Delete,
-                        content_description = stringResource(R.string.alias_delete_directory),
-                        onClick = { vm.delete_directory(dir.id) },
-                        tint = colors.danger,
-                    )
+                    if (idx < visible_dirs.lastIndex) AsterDivider(modifier = Modifier)
                 }
-                if (idx < state.directories.lastIndex) AsterDivider(modifier = Modifier)
             }
         }
+    }
+
+    pending_delete_dir?.let { (id, address) ->
+        org.astermail.android.design.components.AsterDialog(
+            on_dismiss = { pending_delete_dir = null },
+            title = stringResource(R.string.alias_delete_directory),
+            message = stringResource(R.string.alias_delete_confirm_message, address),
+            footer = {
+                org.astermail.android.design.components.AsterDialogOutlineButton(
+                    label = stringResource(R.string.cancel),
+                    onClick = { pending_delete_dir = null },
+                )
+                org.astermail.android.design.components.AsterDialogDestructiveButton(
+                    label = stringResource(R.string.delete),
+                    onClick = { vm.delete_directory(id); pending_delete_dir = null },
+                )
+            },
+        )
     }
 }
 

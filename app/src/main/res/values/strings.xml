@@ -1990,6 +1990,8 @@
     <string name="no_alias_directories">No alias directories</string>
     <string name="no_alias_directories_subtitle">Create alias directories on astermail.org to use them here</string>
     <string name="directories_count">%1$d directories</string>
+    <string name="search_directories">Search directories</string>
+    <string name="no_directories_match">No directories match your search</string>
     <string name="auto_create_on">Auto-create on</string>
 
     <!-- Family Plan screen -->
