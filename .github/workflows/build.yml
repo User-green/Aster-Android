@@ -2,25 +2,71 @@ name: build
 
 on:
   push:
-    paths:
-      - '**/*.kt'
-      - '**/*.kts'
-      - '**/*.toml'
-      - 'gradle/**'
-      - 'gradlew'
-      - '.github/workflows/build.yml'
+    branches: ['**']
+    tags: ['v*']
   pull_request:
-    paths:
-      - '**/*.kt'
-      - '**/*.kts'
-      - '**/*.toml'
-      - 'gradle/**'
-      - 'gradlew'
-      - '.github/workflows/build.yml'
   workflow_dispatch:
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      relevant: ${{ steps.filter.outputs.relevant }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: detect relevant changes
+        id: filter
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            base="${{ github.event.pull_request.base.sha }}"
+          else
+            base="${{ github.event.before }}"
+          fi
+          if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" "${{ github.sha }}")
+          if echo "$changed" | grep -qE '\.(kt|kts|toml)$|(^|/)res/|AndroidManifest\.xml$|^gradle/|^gradlew$|^rust/|^\.github/workflows/build\.yml$'; then
+            echo "relevant=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "relevant=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  checks:
+    needs: changes
+    if: needs.changes.outputs.relevant == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: unit tests and lint
+        run: ./gradlew testFdroidDebugUnitTest lintFdroidDebug
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: check-reports
+          path: |
+            app/build/reports/tests/**
+            app/build/reports/lint-results-*.html
+          if-no-files-found: ignore
+
   build:
+    needs: checks
     runs-on: ubuntu-latest
     env:
       ASTER_UNSIGNED: '1'
@@ -43,12 +89,22 @@ jobs:
         run: cargo install cargo-ndk --locked --version 4.1.2
       - name: build native crypto from source
         run: bash rust/aster-crypto-ffi/scripts/build_android.sh
-      - run: ./gradlew assembleFullRelease assembleFdroidRelease
+      - name: select gradle tasks
+        id: tasks
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "gradle=assembleFdroidRelease" >> "$GITHUB_OUTPUT"
+          else
+            echo "gradle=assembleFullRelease assembleFdroidRelease" >> "$GITHUB_OUTPUT"
+          fi
+      - run: ./gradlew ${{ steps.tasks.outputs.gradle }}
       - uses: actions/upload-artifact@v4
         with:
           name: full-release
           path: app/build/outputs/apk/full/release/*.apk
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
-          name: fdroid-release
+          name: ${{ github.ref_type == 'tag' && 'fdroid-unsigned' || 'fdroid-release' }}
           path: app/build/outputs/apk/fdroid/release/*.apk
+          if-no-files-found: ignore
