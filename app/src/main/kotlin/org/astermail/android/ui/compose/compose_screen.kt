@@ -1323,24 +1323,28 @@ fun ComposeScreen(
                                 android.text.InputType.TYPE_TEXT_FLAG_CAP_SENTENCES
                             imeOptions = EditorInfo.IME_ACTION_NONE or EditorInfo.IME_FLAG_NO_FULLSCREEN
                             minHeight = (200 * resources.displayMetrics.density).toInt()
-                            try {
-                                val cursor_drawable = android.graphics.drawable.GradientDrawable().apply {
-                                    setSize((2 * resources.displayMetrics.density).toInt(), 0)
-                                    setColor(cursor_color_argb)
-                                }
-                                textCursorDrawable = cursor_drawable
-                            } catch (_: Throwable) {}
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                try {
+                                    val cursor_drawable = android.graphics.drawable.GradientDrawable().apply {
+                                        setSize((2 * resources.displayMetrics.density).toInt(), 0)
+                                        setColor(cursor_color_argb)
+                                    }
+                                    textCursorDrawable = cursor_drawable
+                                } catch (_: Throwable) {}
+                            }
                             highlightColor = (cursor_color_argb and 0x00FFFFFF) or 0x55000000.toInt()
-                            try {
-                                val handle_drawable = android.graphics.drawable.GradientDrawable().apply {
-                                    setColor(cursor_color_argb)
-                                    cornerRadius = 8f * resources.displayMetrics.density
-                                    setSize((20 * resources.displayMetrics.density).toInt(), (20 * resources.displayMetrics.density).toInt())
-                                }
-                                setTextSelectHandle(handle_drawable)
-                                setTextSelectHandleLeft(handle_drawable)
-                                setTextSelectHandleRight(handle_drawable)
-                            } catch (_: Throwable) {}
+                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                                try {
+                                    val handle_drawable = android.graphics.drawable.GradientDrawable().apply {
+                                        setColor(cursor_color_argb)
+                                        cornerRadius = 8f * resources.displayMetrics.density
+                                        setSize((20 * resources.displayMetrics.density).toInt(), (20 * resources.displayMetrics.density).toInt())
+                                    }
+                                    setTextSelectHandle(handle_drawable)
+                                    setTextSelectHandleLeft(handle_drawable)
+                                    setTextSelectHandleRight(handle_drawable)
+                                } catch (_: Throwable) {}
+                            }
                             on_image_received = { uri ->
                                 if (insert_image_inline(uri)) schedule_draft_save()
                             }

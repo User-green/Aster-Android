@@ -914,7 +914,7 @@ fun MailDetailScreen(
                                 toast_message = context.getString(R.string.downloading_file, att.filename)
                                 mail_vm.download_attachment(att) { result ->
                                     result.onSuccess { (resolved_att, bytes) ->
-                                        val saved = save_attachment_to_storage(context, resolved_att, bytes)
+                                        val saved = save_attachment_to_storage(context, resolved_att, bytes) != null
                                         toast_message = if (saved) context.getString(R.string.saved_file, resolved_att.filename) else context.getString(R.string.failed_to_save)
                                     }.onFailure {
                                         toast_message = context.getString(R.string.failed_to_download, att.filename)
@@ -1125,7 +1125,7 @@ fun MailDetailScreen(
                     preview_bytes = null
                 },
                 on_download = {
-                    val saved = save_attachment_to_storage(context, att, byt)
+                    val saved = save_attachment_to_storage(context, att, byt) != null
                     Toast.makeText(
                         context,
                         if (saved) context.getString(R.string.saved_file, att.filename) else context.getString(R.string.failed_to_save),
@@ -3826,46 +3826,64 @@ private fun save_attachment_to_storage(
     context: android.content.Context,
     attachment: MessageAttachment,
     bytes: ByteArray,
-): Boolean {
+): android.net.Uri? {
     return try {
         val mime = attachment.content_type.ifBlank { "application/octet-stream" }
         val safe_name = sanitize_filename(attachment.filename)
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            val values = ContentValues().apply {
-                put(MediaStore.Downloads.DISPLAY_NAME, safe_name)
-                put(MediaStore.Downloads.MIME_TYPE, mime)
-                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                put(MediaStore.Downloads.IS_PENDING, 1)
-            }
-            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            if (uri != null) {
-                context.contentResolver.openOutputStream(uri)?.use { out ->
-                    out.write(bytes)
-                    out.flush()
-                }
-                val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                context.contentResolver.update(uri, done, null, null)
-                show_download_notification(context, safe_name, uri, mime)
-                true
-            } else {
-                false
-            }
+        val uri = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            save_via_media_store(context, safe_name, mime, bytes)
         } else {
-            @Suppress("DEPRECATION")
-            val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-            dir.mkdirs()
-            val file = java.io.File(dir, safe_name)
-            if (!file.canonicalPath.startsWith(dir.canonicalPath + java.io.File.separator)) {
-                return false
-            }
-            file.writeBytes(bytes)
-            val uri = android.net.Uri.fromFile(file)
-            show_download_notification(context, safe_name, uri, mime)
-            true
+            save_via_app_external_files(context, safe_name, bytes)
         }
+        if (uri != null) {
+            show_download_notification(context, safe_name, uri, mime)
+        }
+        uri
     } catch (_: Throwable) {
-        false
+        null
     }
+}
+
+@androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.Q)
+private fun save_via_media_store(
+    context: android.content.Context,
+    safe_name: String,
+    mime: String,
+    bytes: ByteArray,
+): android.net.Uri? {
+    val values = ContentValues().apply {
+        put(MediaStore.Downloads.DISPLAY_NAME, safe_name)
+        put(MediaStore.Downloads.MIME_TYPE, mime)
+        put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+        put(MediaStore.Downloads.IS_PENDING, 1)
+    }
+    val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values) ?: return null
+    context.contentResolver.openOutputStream(uri)?.use { out ->
+        out.write(bytes)
+        out.flush()
+    }
+    val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
+    context.contentResolver.update(uri, done, null, null)
+    return uri
+}
+
+private fun save_via_app_external_files(
+    context: android.content.Context,
+    safe_name: String,
+    bytes: ByteArray,
+): android.net.Uri? {
+    val dir = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS) ?: return null
+    dir.mkdirs()
+    val file = java.io.File(dir, safe_name)
+    if (!file.canonicalPath.startsWith(dir.canonicalPath + java.io.File.separator)) {
+        return null
+    }
+    file.writeBytes(bytes)
+    return androidx.core.content.FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file,
+    )
 }
 
 private fun show_download_notification(
@@ -3967,20 +3985,8 @@ private fun attachment_preview_dialog(
                     onClick = {
                         try {
                             val mime = safe_view_mime(attachment.filename, attachment.content_type)
-                            val values = ContentValues().apply {
-                                put(MediaStore.Downloads.DISPLAY_NAME, sanitize_filename(attachment.filename))
-                                put(MediaStore.Downloads.MIME_TYPE, mime)
-                                put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                                put(MediaStore.Downloads.IS_PENDING, 1)
-                            }
-                            val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                            val uri = save_attachment_to_storage(context, attachment, bytes)
                             if (uri != null) {
-                                context.contentResolver.openOutputStream(uri)?.use {
-                                    it.write(bytes)
-                                    it.flush()
-                                }
-                                val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                                context.contentResolver.update(uri, done, null, null)
                                 val intent = Intent(Intent.ACTION_VIEW).apply {
                                     setDataAndType(uri, mime)
                                     addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
@@ -4109,20 +4115,8 @@ private fun attachment_preview_dialog(
                                         .clickable {
                                             try {
                                                 val mime = attachment.content_type.ifBlank { "application/octet-stream" }
-                                                val values = ContentValues().apply {
-                                                    put(MediaStore.Downloads.DISPLAY_NAME, sanitize_filename(attachment.filename))
-                                                    put(MediaStore.Downloads.MIME_TYPE, mime)
-                                                    put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                                                    put(MediaStore.Downloads.IS_PENDING, 1)
-                                                }
-                                                val uri = context.contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                                                val uri = save_attachment_to_storage(context, attachment, bytes)
                                                 if (uri != null) {
-                                                    context.contentResolver.openOutputStream(uri)?.use {
-                                                        it.write(bytes)
-                                                        it.flush()
-                                                    }
-                                                    val done = ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }
-                                                    context.contentResolver.update(uri, done, null, null)
                                                     val intent = Intent(Intent.ACTION_VIEW).apply {
                                                         setDataAndType(uri, mime)
                                                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
