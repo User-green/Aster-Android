@@ -1,0 +1,5 @@
+# Whitelist: ignore all generated docs, keep only explicitly committed files.
+*
+
+!.gitignore
+!fdroid_setup_for_maintainer.md
